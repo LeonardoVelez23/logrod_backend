@@ -136,6 +136,27 @@ export const updateProducto = async (req, res, next) => {
         });
     }
 
+    if (precio !== undefined && Number(precio) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El precio debe ser mayor a 0'
+        });
+    }
+
+    if (cantidad_disponible !== undefined && Number(cantidad_disponible) < 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'La cantidad disponible no puede ser negativa'
+        });
+    }
+
+    if (estado && !['disponible', 'no disponible'].includes(estado)) {
+        return res.status(400).json({
+        success: false,
+        message: 'estado debe ser: disponible o no disponible'
+        });
+    }
+
     if (categoria_id) {
         const categoria = await Categoria.findByPk(categoria_id);
         if (!categoria) {
