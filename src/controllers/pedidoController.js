@@ -118,7 +118,7 @@ export const createPedido = async (req, res, next) => {
     }
 
     if (empleado_id) {
-        const empleado = await Empleado.findByPk(empleado_id, { transaction: t });
+        empleado = await Empleado.findByPk(empleado_id, { transaction: t });
         if (!empleado) {
         await t.rollback();
         return res.status(400).json({
@@ -137,6 +137,14 @@ export const createPedido = async (req, res, next) => {
         return res.status(400).json({
             success: false,
             message: 'Cada detalle debe tener producto_id y cantidad >= 1'
+        });
+        }
+
+        if (item.cantidad > 50) {
+        await t.rollback();
+        return res.status(400).json({
+            success: false,
+            message: `Cantidad máxima por producto: 50 (producto id ${item.producto_id})`
         });
         }
 
@@ -173,25 +181,38 @@ export const createPedido = async (req, res, next) => {
         producto_id: item.producto_id,
         cantidad: item.cantidad,
         precio_unitario: precioUnitario,
-        subtotal,
-        producto
+        subtotal, producto
         });
     }
 
-    const pedido = await Pedido.create({ fecha, hora, modalidad, estado: 'solicitado', valor_total: valorTotal, cliente_id, empleado_id: empleado_id || null }, { transaction: t });
+    const pedido = await Pedido.create(
+        { fecha, hora, modalidad,
+        estado: 'solicitado',
+        valor_total: valorTotal,
+        cliente_id,
+        empleado_id: empleado_id || null
+        },
+        { transaction: t }
+    );
 
     for (const item of detallesProcesados) {
-        await DetallePedido.create({
-        pedido_id: pedido.id,
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        subtotal: item.subtotal
-        }, { transaction: t });
+        await DetallePedido.create(
+        {
+            pedido_id: pedido.id,
+            producto_id: item.producto_id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            subtotal: item.subtotal
+        },
+        { transaction: t }
+        );
 
-        await item.producto.update({
-        cantidad_disponible: item.producto.cantidad_disponible - item.cantidad
-        }, { transaction: t });
+        await item.producto.update(
+        {
+            cantidad_disponible: item.producto.cantidad_disponible - item.cantidad
+        },
+        { transaction: t }
+        );
     }
 
     await t.commit();
