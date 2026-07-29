@@ -89,7 +89,7 @@ export const getPagoByPedido = async (req, res, next) => {
 
 export const createPago = async (req, res, next) => {
     try {
-    const { pedido_id, fecha, valor, metodo_pago,numero_referencia, estado } = req.body;
+    const { pedido_id, fecha, valor, metodo_pago, numero_referencia, estado } = req.body;
 
     if (!pedido_id || !fecha || valor === undefined || !metodo_pago) {
         return res.status(400).json({
@@ -159,9 +159,10 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const pago = await Pago.create({ pedido_id, fecha, valor, metodo_pago,
-    numero_referencia: numero_referencia?.trim() || null,
-    estado: estadoFinal
+    const pago = await Pago.create({
+        pedido_id, fecha, valor, metodo_pago,
+        numero_referencia: numero_referencia?.trim() || null,
+        estado: estadoFinal
     });
 
     const pagoCreado = await Pago.findByPk(pago.id, {
@@ -194,10 +195,7 @@ export const updatePago = async (req, res, next) => {
     const { fecha, valor, metodo_pago, numero_referencia, estado } = req.body;
 
     const pago = await Pago.findByPk(id, {
-        include: {
-        model: Pedido,
-        as: 'pedido'
-        }
+        include: { model: Pedido, as: 'pedido' }
     });
 
     if (!pago) {
@@ -251,12 +249,8 @@ export const updatePago = async (req, res, next) => {
 
         if (estado === 'aprobado') {
         const pagoAprobado = await Pago.findOne({
-            where: {
-            pedido_id: pago.pedido_id,
-            estado: 'aprobado'
-            }
+            where: { pedido_id: pago.pedido_id, estado: 'aprobado' }
         });
-
         if (pagoAprobado && pagoAprobado.id !== pago.id) {
             return res.status(400).json({
             success: false,

@@ -1,4 +1,4 @@
-import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, sequelize } from '../models/index.js';
+import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, Pago, sequelize } from '../models/index.js';
 
 export const getAllPedidos = async (req, res, next) => {
     try {
@@ -247,7 +247,7 @@ export const createPedido = async (req, res, next) => {
     }
 };
 
-    export const updatePedido = async (req, res, next) => {
+export const updatePedido = async (req, res, next) => {
     const t = await sequelize.transaction();
 
     try {
