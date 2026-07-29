@@ -214,6 +214,22 @@ export const updatePago = async (req, res, next) => {
         });
     }
 
+    if (valor !== undefined && Number(valor) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El valor del pago debe ser mayor a 0'
+        });
+    }
+
+    if (valor !== undefined && pago.pedido) {
+        if (Number(valor) !== Number(pago.pedido.valor_total)) {
+        return res.status(400).json({
+            success: false,
+            message: `El valor del pago (${valor}) debe coincidir con el total del pedido (${pago.pedido.valor_total})`
+        });
+        }
+    }
+
     if (metodo_pago) {
         const metodosValidos = ['efectivo', 'tarjeta', 'transferencia'];
         if (!metodosValidos.includes(metodo_pago)) {
@@ -248,16 +264,16 @@ export const updatePago = async (req, res, next) => {
             });
         }
         }
-        
     }
-    
+
     await pago.update({
         fecha: fecha ?? pago.fecha,
         valor: valor ?? pago.valor,
         metodo_pago: metodo_pago ?? pago.metodo_pago,
-        numero_referencia: numero_referencia !== undefined
-        ? (numero_referencia?.trim() || null)
-        : pago.numero_referencia,
+        numero_referencia:
+        numero_referencia !== undefined
+            ? numero_referencia?.trim() || null
+            : pago.numero_referencia,
         estado: estado ?? pago.estado
     });
 
