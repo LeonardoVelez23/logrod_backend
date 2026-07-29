@@ -9,7 +9,7 @@ const sequelize = new Sequelize(config.databaseUrl, {
   dialect: 'postgres',
   logging: config.nodeEnv === 'development' ? console.log : false,
   dialectOptions: {
-    ssl: config.nodeEnv === 'production' || config.databaseUrl?.includes('supabase.co') ? {
+    ssl: config.nodeEnv === 'production' || config.databaseUrl?.includes('supabase') ? {
       require: true,
       rejectUnauthorized: false
     } : false
