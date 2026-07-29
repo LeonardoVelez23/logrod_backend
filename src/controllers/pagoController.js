@@ -98,11 +98,27 @@ export const createPago = async (req, res, next) => {
         });
     }
 
+    if (Number(valor) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El valor del pago debe ser mayor a 0'
+        });
+    }
+
     const metodosValidos = ['efectivo', 'tarjeta', 'transferencia'];
     if (!metodosValidos.includes(metodo_pago)) {
         return res.status(400).json({
         success: false,
         message: 'metodo_pago debe ser: efectivo, tarjeta o transferencia'
+        });
+    }
+
+    const estadoFinal = estado || 'pendiente';
+    const estadosValidos = ['pendiente', 'aprobado', 'rechazado'];
+    if (!estadosValidos.includes(estadoFinal)) {
+        return res.status(400).json({
+        success: false,
+        message: 'estado debe ser: pendiente, aprobado o rechazado'
         });
     }
 
@@ -114,11 +130,24 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const estadosQueYaAvanzaron = ['en preparación', 'listo', 'entregado'];
     if (pedido.estado === 'cancelado') {
         return res.status(400).json({
         success: false,
         message: 'No se puede registrar pago: el pedido está cancelado y no requiere pago'
+        });
+    }
+
+    if (pedido.estado === 'solicitado') {
+        return res.status(400).json({
+        success: false,
+        message: 'El pedido debe estar al menos confirmado para registrar un pago'
+        });
+    }
+
+    if (Number(valor) !== Number(pedido.valor_total)) {
+        return res.status(400).json({
+        success: false,
+        message: `El valor del pago (${valor}) debe coincidir con el total del pedido (${pedido.valor_total})`
         });
     }
 
@@ -130,27 +159,9 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const estadoFinal = estado || 'pendiente';
-
-    if (estadoFinal === 'aprobado') {
-        const pagoAprobado = await Pago.findOne({
-        where: {
-            pedido_id,
-            estado: 'aprobado'
-        }
-        });
-        if (pagoAprobado) {
-        return res.status(400).json({
-            success: false,
-            message: 'Este pedido ya tiene un pago aprobado'
-        });
-        }
-    }
-
-    const pago = await Pago.create({ 
-    pedido_id, fecha, valor, metodo_pago,
-    numero_referencia: numero_referencia?.trim() || null, 
-    estado: estado || 'pendiente' 
+    const pago = await Pago.create({ pedido_id, fecha, valor, metodo_pago,
+    numero_referencia: numero_referencia?.trim() || null,
+    estado: estadoFinal
     });
 
     const pagoCreado = await Pago.findByPk(pago.id, {
