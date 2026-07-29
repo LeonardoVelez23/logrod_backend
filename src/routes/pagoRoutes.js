@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllPagos, getPagoById, getPagoByPedido, createPago,updatePago, deletePago } from '../controllers/pagoController.js';
+import { getAllPagos, getPagoById, getPagoByPedido, createPago, updatePago, deletePago } from '../controllers/pagoController.js';
 import { verifyToken, restrictTo } from '../middlewares/authMiddleware.js';
 
 const router = Router();
