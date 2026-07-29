@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 export const getAllClientes = async (req, res, next) => {
     try {
     const clientes = await Cliente.findAll({
-      attributes: { exclude: ['contrasenia'] }, // No devolver la contraseña
+        attributes: { exclude: ['contrasenia'] },
         order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
     });
 

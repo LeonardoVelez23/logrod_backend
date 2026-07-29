@@ -17,7 +17,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // 1. Search in Clientes table first
     let user = await Cliente.findOne({
       where: {
         [Op.or]: [
@@ -29,7 +28,6 @@ export const login = async (req, res, next) => {
 
     let role = 'cliente';
 
-    // 2. If not found in Clientes, search in Empleados table
     if (!user) {
       user = await Empleado.findOne({
         where: {
@@ -41,13 +39,11 @@ export const login = async (req, res, next) => {
       });
       
       if (user) {
-        // If found in Empleados, determine if role is admin or empleado
         const cargo = user.cargo?.toLowerCase() || '';
         role = (cargo === 'admin' || cargo === 'administrador') ? 'admin' : 'empleado';
       }
     }
 
-    // 3. If still not found, return invalid credentials
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -55,7 +51,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // 4. Compare password hashes
     const isMatch = await bcrypt.compare(password, user.contrasenia);
     if (!isMatch) {
       return res.status(401).json({
@@ -64,7 +59,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // 5. Generate JWT token
     const token = jwt.sign(
       {
         id: user.id,
@@ -78,7 +72,6 @@ export const login = async (req, res, next) => {
       { expiresIn: '8h' }
     );
 
-    // Remove password hash from response
     const userData = user.toJSON();
     delete userData.contrasenia;
 

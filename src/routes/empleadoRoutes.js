@@ -4,7 +4,6 @@ import { verifyToken, restrictTo } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-// Protect all routes below
 router.use(verifyToken);
 
 router.get('/', restrictTo('admin'), getAllEmpleados);
