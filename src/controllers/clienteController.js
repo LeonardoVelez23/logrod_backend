@@ -1,4 +1,5 @@
 import { Cliente } from '../models/index.js';
+import bcrypt from 'bcryptjs';
 
 export const getAllClientes = async (req, res, next) => {
     try {
@@ -59,6 +60,9 @@ export const createCliente = async (req, res, next) => {
         });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const contraseniaHasheada = await bcrypt.hash(contrasenia, salt);
+
     const cliente = await Cliente.create({
         identificacion: identificacion.trim(),
         nombres: nombres.trim(),
@@ -66,7 +70,7 @@ export const createCliente = async (req, res, next) => {
         correo_electronico: correo_electronico.trim().toLowerCase(),
         telefono: telefono?.trim() || null,
         tipo_cliente,
-        contrasenia
+        contrasenia: contraseniaHasheada
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();
@@ -117,6 +121,12 @@ export const updateCliente = async (req, res, next) => {
         }
     }
 
+    let contraseniaUpdate = cliente.contrasenia;
+    if (contrasenia) {
+        const salt = await bcrypt.genSalt(10);
+        contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
+    }
+
     await cliente.update({
         identificacion: identificacion?.trim() ?? cliente.identificacion,
         nombres: nombres?.trim() ?? cliente.nombres,
@@ -124,7 +134,7 @@ export const updateCliente = async (req, res, next) => {
         correo_electronico: correo_electronico?.trim().toLowerCase() ?? cliente.correo_electronico,
         telefono: telefono !== undefined ? (telefono?.trim() || null) : cliente.telefono,
         tipo_cliente: tipo_cliente ?? cliente.tipo_cliente,
-        contrasenia: contrasenia ?? cliente.contrasenia
+        contrasenia: contraseniaUpdate
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();
