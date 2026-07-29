@@ -387,14 +387,25 @@ export const deletePedido = async (req, res, next) => {
         });
     }
 
+    if (!['solicitado', 'cancelado'].includes(pedido.estado)) {
+        await t.rollback();
+        return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden eliminar pedidos en estado solicitado o cancelado'
+        });
+    }
+
     for (const detalle of pedido.detalles) {
         const producto = await Producto.findByPk(detalle.producto_id, { transaction: t });
         if (producto) {
-        await producto.update({
+        await producto.update(
+            {
             cantidad_disponible: producto.cantidad_disponible + detalle.cantidad
-        }, { transaction: t });
+            },
+            { transaction: t }
+        );
         }
-    }
+        }
 
     await DetallePedido.destroy({ where: { pedido_id: id }, transaction: t });
     await pedido.destroy({ transaction: t });
