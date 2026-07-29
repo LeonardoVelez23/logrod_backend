@@ -118,7 +118,7 @@ export const createPedido = async (req, res, next) => {
     }
 
     if (empleado_id) {
-        empleado = await Empleado.findByPk(empleado_id, { transaction: t });
+        const empleado = await Empleado.findByPk(empleado_id, { transaction: t });
         if (!empleado) {
         await t.rollback();
         return res.status(400).json({
