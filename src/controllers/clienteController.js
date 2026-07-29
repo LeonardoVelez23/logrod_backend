@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 export const getAllClientes = async (req, res, next) => {
     try {
     const clientes = await Cliente.findAll({
-      attributes: { exclude: ['contrasenia'] }, // No devolver la contraseña
+        attributes: { exclude: ['contrasenia'] },
         order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
     });
 
@@ -52,11 +52,11 @@ export const createCliente = async (req, res, next) => {
         });
     }
 
-    const tiposValidos = ['estudiante', 'docente', 'administrativo'];
+    const tiposValidos = ['cliente', 'empleado', 'administrador'];
     if (!tiposValidos.includes(tipo_cliente)) {
         return res.status(400).json({
         success: false,
-        message: 'tipo_cliente debe ser: estudiante, docente o administrativo'
+        message: 'tipo_cliente debe ser: cliente, empleado o administrador'
         });
     }
 
@@ -112,11 +112,11 @@ export const updateCliente = async (req, res, next) => {
     }
 
     if (tipo_cliente) {
-        const tiposValidos = ['estudiante', 'docente', 'administrativo'];
+        const tiposValidos = ['cliente', 'empleado', 'administrador'];
         if (!tiposValidos.includes(tipo_cliente)) {
         return res.status(400).json({
             success: false,
-            message: 'tipo_cliente debe ser: estudiante, docente o administrativo'
+            message: 'tipo_cliente debe ser: cliente, empleado o administrador'
         });
         }
     }

@@ -32,7 +32,7 @@ module.exports = {
         allowNull: true
       },
       tipo_cliente: {
-        type: Sequelize.ENUM('estudiante', 'docente', 'administrativo'),
+        type: Sequelize.ENUM('cliente', 'empleado', 'administrador'),
         allowNull: false
       },
       contrasenia: {

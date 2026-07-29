@@ -114,12 +114,37 @@ export const createPago = async (req, res, next) => {
         });
     }
 
+    const estadosQueYaAvanzaron = ['en preparación', 'listo', 'entregado'];
+    if (pedido.estado === 'cancelado') {
+        return res.status(400).json({
+        success: false,
+        message: 'No se puede registrar pago: el pedido está cancelado y no requiere pago'
+        });
+    }
+
     const pagoExistente = await Pago.findOne({ where: { pedido_id } });
     if (pagoExistente) {
         return res.status(400).json({
         success: false,
         message: 'Este pedido ya tiene un pago registrado'
         });
+    }
+
+    const estadoFinal = estado || 'pendiente';
+
+    if (estadoFinal === 'aprobado') {
+        const pagoAprobado = await Pago.findOne({
+        where: {
+            pedido_id,
+            estado: 'aprobado'
+        }
+        });
+        if (pagoAprobado) {
+        return res.status(400).json({
+            success: false,
+            message: 'Este pedido ya tiene un pago aprobado'
+        });
+        }
     }
 
     const pago = await Pago.create({ 
@@ -157,12 +182,24 @@ export const updatePago = async (req, res, next) => {
     const { id } = req.params;
     const { fecha, valor, metodo_pago, numero_referencia, estado } = req.body;
 
-    const pago = await Pago.findByPk(id);
+    const pago = await Pago.findByPk(id, {
+        include: {
+        model: Pedido,
+        as: 'pedido'
+        }
+    });
 
     if (!pago) {
         return res.status(404).json({
         success: false,
         message: 'Pago no encontrado'
+        });
+    }
+
+    if (pago.pedido?.estado === 'cancelado' && estado === 'aprobado') {
+        return res.status(400).json({
+        success: false,
+        message: 'No se puede aprobar un pago de un pedido cancelado'
         });
     }
 
@@ -184,8 +221,25 @@ export const updatePago = async (req, res, next) => {
             message: 'estado debe ser: pendiente, aprobado o rechazado'
         });
         }
-    }
 
+        if (estado === 'aprobado') {
+        const pagoAprobado = await Pago.findOne({
+            where: {
+            pedido_id: pago.pedido_id,
+            estado: 'aprobado'
+            }
+        });
+
+        if (pagoAprobado && pagoAprobado.id !== pago.id) {
+            return res.status(400).json({
+            success: false,
+            message: 'Este pedido ya tiene un pago aprobado'
+            });
+        }
+        }
+        
+    }
+    
     await pago.update({
         fecha: fecha ?? pago.fecha,
         valor: valor ?? pago.valor,
