@@ -111,3 +111,4 @@ http://localhost:3000/api/v1/health
 ## Notas
 
 Este README está pensado para el lanzamiento inicial del proyecto y puede ampliarse con documentación adicional de autenticación, base de datos y despliegue cuando se agreguen esos módulos.
+
