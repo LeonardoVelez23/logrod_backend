@@ -1,4 +1,5 @@
 import { Empleado } from '../models/index.js';
+import bcrypt from 'bcryptjs';
 
 export const getAllEmpleados = async (req, res, next) => {
     try {
@@ -42,7 +43,7 @@ export const getEmpleadoById = async (req, res, next) => {
 
 export const createEmpleado = async (req, res, next) => {
     try {
-    const { identificacion, nombres, apellidos, orreo_electronico, telefono, cargo, turno_trabajo, contrasenia } = req.body;
+    const { identificacion, nombres, apellidos, correo_electronico, telefono, cargo, turno_trabajo, contrasenia } = req.body;
 
     if (!identificacion || !nombres || !apellidos || !correo_electronico || !contrasenia) {
         return res.status(400).json({
@@ -50,6 +51,9 @@ export const createEmpleado = async (req, res, next) => {
         message: 'Los campos identificacion, nombres, apellidos, correo_electronico y contrasenia son obligatorios'
         });
     }
+
+    const salt = await bcrypt.genSalt(10);
+    const contraseniaHasheada = await bcrypt.hash(contrasenia, salt);
 
     const empleado = await Empleado.create({
         identificacion: identificacion.trim(),
@@ -59,7 +63,7 @@ export const createEmpleado = async (req, res, next) => {
         telefono: telefono?.trim() || null,
         cargo: cargo?.trim() || null,
         turno_trabajo: turno_trabajo?.trim() || null,
-        contrasenia
+        contrasenia: contraseniaHasheada
     });
 
     const { contrasenia: _, ...empleadoSinPassword } = empleado.toJSON();
@@ -100,6 +104,12 @@ export const updateEmpleado = async (req, res, next) => {
         });
     }
 
+    let contraseniaUpdate = empleado.contrasenia;
+    if (contrasenia) {
+        const salt = await bcrypt.genSalt(10);
+        contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
+    }
+
     await empleado.update({
         identificacion: identificacion?.trim() ?? empleado.identificacion,
         nombres: nombres?.trim() ?? empleado.nombres,
@@ -108,7 +118,7 @@ export const updateEmpleado = async (req, res, next) => {
         telefono: telefono !== undefined ? (telefono?.trim() || null) : empleado.telefono,
         cargo: cargo !== undefined ? (cargo?.trim() || null) : empleado.cargo,
         turno_trabajo: turno_trabajo !== undefined ? (turno_trabajo?.trim() || null) : empleado.turno_trabajo,
-        contrasenia: contrasenia ?? empleado.contrasenia
+        contrasenia: contraseniaUpdate
     });
 
     const { contrasenia: _, ...empleadoSinPassword } = empleado.toJSON();

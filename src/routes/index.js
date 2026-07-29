@@ -6,10 +6,12 @@ import clienteRoutes from './clienteRoutes.js';
 import empleadoRoutes from './empleadoRoutes.js';
 import pedidoRoutes from './pedidoRoutes.js';
 import pagoRoutes from './pagoRoutes.js';
+import authRoutes from './authRoutes.js';
 
 const router = Router();
 
 router.use('/', healthRoutes);
+router.use('/auth', authRoutes);
 router.use('/categorias', categoriaRoutes);
 router.use('/productos', productoRoutes);
 router.use('/clientes', clienteRoutes);
