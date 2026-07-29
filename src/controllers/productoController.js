@@ -50,15 +50,7 @@ export const getProductoById = async (req, res, next) => {
 
 export const createProducto = async (req, res, next) => {
     try {
-    const {
-        codigo,
-        nombre,
-        descripcion,
-        precio,
-        cantidad_disponible,
-        estado,
-        categoria_id
-    } = req.body;
+    const { codigo, nombre, descripcion, precio, cantidad_disponible, estado, categoria_id } = req.body;
 
     if (!codigo || !nombre || precio === undefined || !categoria_id) {
         return res.status(400).json({
@@ -112,15 +104,7 @@ export const createProducto = async (req, res, next) => {
 export const updateProducto = async (req, res, next) => {
     try {
     const { id } = req.params;
-    const {
-        codigo,
-        nombre,
-        descripcion,
-        precio,
-        cantidad_disponible,
-        estado,
-        categoria_id
-    } = req.body;
+    const { codigo, nombre, descripcion, precio, cantidad_disponible, estado, categoria_id } = req.body;
 
     const producto = await Producto.findByPk(id);
 
