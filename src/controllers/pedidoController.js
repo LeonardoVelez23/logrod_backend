@@ -421,3 +421,99 @@ export const deletePedido = async (req, res, next) => {
     next(error);
     }
 };
+
+export const getPedidoStats = async (req, res, next) => {
+    try {
+        const totalOrders = await Pedido.count();
+
+        const totalRevenueResult = await Pago.sum('valor', { where: { estado: 'aprobado' } });
+        const totalRevenue = Number(totalRevenueResult || 0);
+
+        const totalClients = await Cliente.count();
+
+        // Distribución por estado
+        const distributionRaw = await Pedido.findAll({
+            attributes: [
+                'estado',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['estado']
+        });
+        
+        const orderStatusDistribution = {};
+        distributionRaw.forEach(item => {
+            orderStatusDistribution[item.estado] = Number(item.getDataValue('count'));
+        });
+
+        const estadosPosibles = ['solicitado', 'confirmado', 'en preparación', 'listo', 'entregado', 'cancelado'];
+        estadosPosibles.forEach(estado => {
+            if (orderStatusDistribution[estado] === undefined) {
+                orderStatusDistribution[estado] = 0;
+            }
+        });
+
+        // Distribución por modalidad
+        const modalityRaw = await Pedido.findAll({
+            attributes: [
+                'modalidad',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['modalidad']
+        });
+
+        const modalityDistribution = {
+            presencial: 0,
+            'en línea': 0,
+            desconocida: 0
+        };
+
+        modalityRaw.forEach(item => {
+            const modalidad = item.modalidad;
+            const count = Number(item.getDataValue('count'));
+
+            if (modalidad === 'presencial' || modalidad === 'en línea') {
+                modalityDistribution[modalidad] = count;
+            } else {
+                // Cualquier modalidad no reconocida se acumula en "desconocida"
+                modalityDistribution.desconocida += count;
+            }
+        });
+
+        // Productos más populares
+        const popularProducts = await DetallePedido.findAll({
+            attributes: [
+                'producto_id',
+                [sequelize.fn('SUM', sequelize.col('cantidad')), 'total_vendido']
+            ],
+            include: [{
+                model: Producto,
+                as: 'producto',
+                attributes: ['nombre', 'precio']
+            }],
+            group: ['producto_id', 'producto.id'],
+            order: [[sequelize.fn('SUM', sequelize.col('cantidad')), 'DESC']],
+            limit: 5
+        });
+
+        const formattedPopular = popularProducts.map(item => ({
+            id: item.producto_id,
+            nombre: item.producto?.nombre || 'Producto Desconocido',
+            precio: Number(item.producto?.precio || 0),
+            totalVendido: Number(item.getDataValue('total_vendido'))
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalOrders,
+                totalRevenue,
+                totalClients,
+                orderStatusDistribution,
+                modalityDistribution,
+                popularProducts: formattedPopular
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
