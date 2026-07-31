@@ -463,11 +463,20 @@ export const getPedidoStats = async (req, res, next) => {
 
         const modalityDistribution = {
             presencial: 0,
-            'en línea': 0
+            'en línea': 0,
+            desconocida: 0
         };
+
         modalityRaw.forEach(item => {
-            const key = item.modalidad === 'en línea' ? 'en línea' : 'presencial';
-            modalityDistribution[key] = Number(item.getDataValue('count'));
+            const modalidad = item.modalidad;
+            const count = Number(item.getDataValue('count'));
+
+            if (modalidad === 'presencial' || modalidad === 'en línea') {
+                modalityDistribution[modalidad] = count;
+            } else {
+                // Cualquier modalidad no reconocida se acumula en "desconocida"
+                modalityDistribution.desconocida += count;
+            }
         });
 
         // Productos más populares
