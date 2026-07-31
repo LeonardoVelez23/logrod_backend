@@ -4,12 +4,10 @@ import { verifyToken, restrictTo } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-router.use(verifyToken);
-
-router.get('/', restrictTo('admin'), getAllClientes);
-router.post('/', restrictTo('admin'), createCliente);
-router.get('/:id', restrictTo('admin', 'cliente'), getClienteById);
-router.put('/:id', restrictTo('admin', 'cliente'), updateCliente);
-router.delete('/:id', restrictTo('admin'), deleteCliente);
+router.post('/', createCliente);
+router.get('/', verifyToken, restrictTo('admin', 'empleado'), getAllClientes);
+router.get('/:id', verifyToken, restrictTo('admin', 'cliente'), getClienteById);
+router.put('/:id', verifyToken, restrictTo('admin', 'cliente'), updateCliente);
+router.delete('/:id', verifyToken, restrictTo('admin'), deleteCliente);
 
 export default router;

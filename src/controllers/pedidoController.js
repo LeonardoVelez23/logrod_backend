@@ -1,4 +1,4 @@
-import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, sequelize } from '../models/index.js';
+import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, Pago, sequelize } from '../models/index.js';
 
 export const getAllPedidos = async (req, res, next) => {
     try {
@@ -140,6 +140,14 @@ export const createPedido = async (req, res, next) => {
         });
         }
 
+        if (item.cantidad > 50) {
+        await t.rollback();
+        return res.status(400).json({
+            success: false,
+            message: `Cantidad máxima por producto: 50 (producto id ${item.producto_id})`
+        });
+        }
+
         const producto = await Producto.findByPk(item.producto_id, { transaction: t });
         if (!producto) {
         await t.rollback();
@@ -173,25 +181,38 @@ export const createPedido = async (req, res, next) => {
         producto_id: item.producto_id,
         cantidad: item.cantidad,
         precio_unitario: precioUnitario,
-        subtotal,
-        producto
+        subtotal, producto
         });
     }
 
-    const pedido = await Pedido.create({ fecha, hora, modalidad, estado: 'solicitado', valor_total: valorTotal, cliente_id, empleado_id: empleado_id || null }, { transaction: t });
+    const pedido = await Pedido.create(
+        { fecha, hora, modalidad,
+        estado: 'solicitado',
+        valor_total: valorTotal,
+        cliente_id,
+        empleado_id: empleado_id || null
+        },
+        { transaction: t }
+    );
 
     for (const item of detallesProcesados) {
-        await DetallePedido.create({
-        pedido_id: pedido.id,
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        subtotal: item.subtotal
-        }, { transaction: t });
+        await DetallePedido.create(
+        {
+            pedido_id: pedido.id,
+            producto_id: item.producto_id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            subtotal: item.subtotal
+        },
+        { transaction: t }
+        );
 
-        await item.producto.update({
-        cantidad_disponible: item.producto.cantidad_disponible - item.cantidad
-        }, { transaction: t });
+        await item.producto.update(
+        {
+            cantidad_disponible: item.producto.cantidad_disponible - item.cantidad
+        },
+        { transaction: t }
+        );
     }
 
     await t.commit();
@@ -227,30 +248,61 @@ export const createPedido = async (req, res, next) => {
 };
 
 export const updatePedido = async (req, res, next) => {
+    const t = await sequelize.transaction();
+
     try {
     const { id } = req.params;
     const { estado, empleado_id, modalidad } = req.body;
 
-    const pedido = await Pedido.findByPk(id);
+    const pedido = await Pedido.findByPk(id, {
+        include: [{ model: DetallePedido, as: 'detalles' }],
+        transaction: t
+    });
 
     if (!pedido) {
+        await t.rollback();
         return res.status(404).json({
         success: false,
         message: 'Pedido no encontrado'
         });
     }
 
-    const estadosValidos = ['solicitado', 'confirmado', 'en preparación', 'listo', 'entregado', 'cancelado'];
-    if (estado && !estadosValidos.includes(estado)) {
+    const transiciones = {
+        'solicitado': ['confirmado', 'cancelado'],
+        'confirmado': ['en preparación', 'cancelado'],
+        'en preparación': ['listo', 'cancelado'],
+        'listo': ['entregado'],
+        'entregado': [],
+        'cancelado': []
+    };
+
+    if (estado) {
+        const permitidos = transiciones[pedido.estado] || [];
+        if (!permitidos.includes(estado)) {
+        await t.rollback();
+        return res.status(400).json({
+            success: false,
+            message: `No se puede cambiar de "${pedido.estado}" a "${estado}". Transiciones válidas: ${permitidos.join(', ') || 'ninguna (estado final)'}`
+        });
+        }
+    }
+
+    const estadosQueRequierenEmpleado = ['confirmado', 'en preparación', 'listo', 'entregado'];
+    const nuevoEstado = estado ?? pedido.estado;
+    const nuevoEmpleado = empleado_id !== undefined ? empleado_id : pedido.empleado_id;
+
+    if (estadosQueRequierenEmpleado.includes(nuevoEstado) && !nuevoEmpleado) {
+        await t.rollback();
         return res.status(400).json({
         success: false,
-        message: `estado debe ser uno de: ${estadosValidos.join(', ')}`
+        message: 'Debe asignar un empleado responsable para este estado del pedido'
         });
     }
 
     if (empleado_id) {
-        const empleado = await Empleado.findByPk(empleado_id);
+        const empleado = await Empleado.findByPk(empleado_id, { transaction: t });
         if (!empleado) {
+        await t.rollback();
         return res.status(400).json({
             success: false,
             message: 'El empleado indicado no existe'
@@ -261,6 +313,7 @@ export const updatePedido = async (req, res, next) => {
     if (modalidad) {
         const modalidadesValidas = ['presencial', 'en línea'];
         if (!modalidadesValidas.includes(modalidad)) {
+        await t.rollback();
         return res.status(400).json({
             success: false,
             message: 'modalidad debe ser: presencial o en línea'
@@ -268,32 +321,38 @@ export const updatePedido = async (req, res, next) => {
         }
     }
 
+    if (estado === 'cancelado' && pedido.estado !== 'cancelado') {
+        for (const detalle of pedido.detalles) {
+        const producto = await Producto.findByPk(detalle.producto_id, { transaction: t });
+        if (producto) {
+            await producto.update({
+            cantidad_disponible: producto.cantidad_disponible + detalle.cantidad
+            }, { transaction: t });
+        }
+        }
+
+        const pago = await Pago.findOne({ where: { pedido_id: id }, transaction: t });
+        if (pago && pago.estado === 'pendiente') {
+        await pago.update({ estado: 'rechazado' }, { transaction: t });
+        }
+    }
+
     await pedido.update({
         estado: estado ?? pedido.estado,
         empleado_id: empleado_id !== undefined ? empleado_id : pedido.empleado_id,
         modalidad: modalidad ?? pedido.modalidad
-    });
+    }, { transaction: t });
+
+    await t.commit();
 
     const pedidoActualizado = await Pedido.findByPk(id, {
         include: [
-        {
-            model: Cliente,
-            as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoResponsable',
-            attributes: ['id', 'nombres', 'apellidos']
-        },
+        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos'] },
+        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos'] },
         {
             model: DetallePedido,
             as: 'detalles',
-            include: {
-            model: Producto,
-            as: 'producto',
-            attributes: ['id', 'codigo', 'nombre']
-            }
+            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre'] }
         }
         ]
     });
@@ -304,6 +363,7 @@ export const updatePedido = async (req, res, next) => {
         data: pedidoActualizado
     });
     } catch (error) {
+    await t.rollback();
     next(error);
     }
 };
@@ -327,14 +387,25 @@ export const deletePedido = async (req, res, next) => {
         });
     }
 
+    if (!['solicitado', 'cancelado'].includes(pedido.estado)) {
+        await t.rollback();
+        return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden eliminar pedidos en estado solicitado o cancelado'
+        });
+    }
+
     for (const detalle of pedido.detalles) {
         const producto = await Producto.findByPk(detalle.producto_id, { transaction: t });
         if (producto) {
-        await producto.update({
+        await producto.update(
+            {
             cantidad_disponible: producto.cantidad_disponible + detalle.cantidad
-        }, { transaction: t });
+            },
+            { transaction: t }
+        );
         }
-    }
+        }
 
     await DetallePedido.destroy({ where: { pedido_id: id }, transaction: t });
     await pedido.destroy({ transaction: t });

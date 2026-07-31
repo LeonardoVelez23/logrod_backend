@@ -59,6 +59,27 @@ export const createProducto = async (req, res, next) => {
         });
     }
 
+    if (Number(precio) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El precio debe ser mayor a 0'
+        });
+    }
+
+    if (cantidad_disponible !== undefined && Number(cantidad_disponible) < 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'La cantidad disponible no puede ser negativa'
+        });
+    }
+
+    if (estado && !['disponible', 'no disponible'].includes(estado)) {
+        return res.status(400).json({
+        success: false,
+        message: 'estado debe ser: disponible o no disponible'
+        });
+    }
+
     const categoria = await Categoria.findByPk(categoria_id);
     if (!categoria) {
         return res.status(400).json({
@@ -112,6 +133,27 @@ export const updateProducto = async (req, res, next) => {
         return res.status(404).json({
         success: false,
         message: 'Producto no encontrado'
+        });
+    }
+
+    if (precio !== undefined && Number(precio) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El precio debe ser mayor a 0'
+        });
+    }
+
+    if (cantidad_disponible !== undefined && Number(cantidad_disponible) < 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'La cantidad disponible no puede ser negativa'
+        });
+    }
+
+    if (estado && !['disponible', 'no disponible'].includes(estado)) {
+        return res.status(400).json({
+        success: false,
+        message: 'estado debe ser: disponible o no disponible'
         });
     }
 

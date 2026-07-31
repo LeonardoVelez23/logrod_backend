@@ -89,12 +89,19 @@ export const getPagoByPedido = async (req, res, next) => {
 
 export const createPago = async (req, res, next) => {
     try {
-    const { pedido_id, fecha, valor, metodo_pago,numero_referencia, estado } = req.body;
+    const { pedido_id, fecha, valor, metodo_pago, numero_referencia, estado } = req.body;
 
     if (!pedido_id || !fecha || valor === undefined || !metodo_pago) {
         return res.status(400).json({
         success: false,
         message: 'pedido_id, fecha, valor y metodo_pago son obligatorios'
+        });
+    }
+
+    if (Number(valor) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El valor del pago debe ser mayor a 0'
         });
     }
 
@@ -106,6 +113,15 @@ export const createPago = async (req, res, next) => {
         });
     }
 
+    const estadoFinal = estado || 'pendiente';
+    const estadosValidos = ['pendiente', 'aprobado', 'rechazado'];
+    if (!estadosValidos.includes(estadoFinal)) {
+        return res.status(400).json({
+        success: false,
+        message: 'estado debe ser: pendiente, aprobado o rechazado'
+        });
+    }
+
     const pedido = await Pedido.findByPk(pedido_id);
     if (!pedido) {
         return res.status(400).json({
@@ -114,11 +130,24 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const estadosQueYaAvanzaron = ['en preparación', 'listo', 'entregado'];
     if (pedido.estado === 'cancelado') {
         return res.status(400).json({
         success: false,
         message: 'No se puede registrar pago: el pedido está cancelado y no requiere pago'
+        });
+    }
+
+    if (pedido.estado === 'solicitado') {
+        return res.status(400).json({
+        success: false,
+        message: 'El pedido debe estar al menos confirmado para registrar un pago'
+        });
+    }
+
+    if (Number(valor) !== Number(pedido.valor_total)) {
+        return res.status(400).json({
+        success: false,
+        message: `El valor del pago (${valor}) debe coincidir con el total del pedido (${pedido.valor_total})`
         });
     }
 
@@ -130,27 +159,10 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const estadoFinal = estado || 'pendiente';
-
-    if (estadoFinal === 'aprobado') {
-        const pagoAprobado = await Pago.findOne({
-        where: {
-            pedido_id,
-            estado: 'aprobado'
-        }
-        });
-        if (pagoAprobado) {
-        return res.status(400).json({
-            success: false,
-            message: 'Este pedido ya tiene un pago aprobado'
-        });
-        }
-    }
-
-    const pago = await Pago.create({ 
-    pedido_id, fecha, valor, metodo_pago,
-    numero_referencia: numero_referencia?.trim() || null, 
-    estado: estado || 'pendiente' 
+    const pago = await Pago.create({
+        pedido_id, fecha, valor, metodo_pago,
+        numero_referencia: numero_referencia?.trim() || null,
+        estado: estadoFinal
     });
 
     const pagoCreado = await Pago.findByPk(pago.id, {
@@ -183,10 +195,7 @@ export const updatePago = async (req, res, next) => {
     const { fecha, valor, metodo_pago, numero_referencia, estado } = req.body;
 
     const pago = await Pago.findByPk(id, {
-        include: {
-        model: Pedido,
-        as: 'pedido'
-        }
+        include: { model: Pedido, as: 'pedido' }
     });
 
     if (!pago) {
@@ -201,6 +210,22 @@ export const updatePago = async (req, res, next) => {
         success: false,
         message: 'No se puede aprobar un pago de un pedido cancelado'
         });
+    }
+
+    if (valor !== undefined && Number(valor) <= 0) {
+        return res.status(400).json({
+        success: false,
+        message: 'El valor del pago debe ser mayor a 0'
+        });
+    }
+
+    if (valor !== undefined && pago.pedido) {
+        if (Number(valor) !== Number(pago.pedido.valor_total)) {
+        return res.status(400).json({
+            success: false,
+            message: `El valor del pago (${valor}) debe coincidir con el total del pedido (${pago.pedido.valor_total})`
+        });
+        }
     }
 
     if (metodo_pago) {
@@ -224,12 +249,8 @@ export const updatePago = async (req, res, next) => {
 
         if (estado === 'aprobado') {
         const pagoAprobado = await Pago.findOne({
-            where: {
-            pedido_id: pago.pedido_id,
-            estado: 'aprobado'
-            }
+            where: { pedido_id: pago.pedido_id, estado: 'aprobado' }
         });
-
         if (pagoAprobado && pagoAprobado.id !== pago.id) {
             return res.status(400).json({
             success: false,
@@ -237,16 +258,16 @@ export const updatePago = async (req, res, next) => {
             });
         }
         }
-        
     }
-    
+
     await pago.update({
         fecha: fecha ?? pago.fecha,
         valor: valor ?? pago.valor,
         metodo_pago: metodo_pago ?? pago.metodo_pago,
-        numero_referencia: numero_referencia !== undefined
-        ? (numero_referencia?.trim() || null)
-        : pago.numero_referencia,
+        numero_referencia:
+        numero_referencia !== undefined
+            ? numero_referencia?.trim() || null
+            : pago.numero_referencia,
         estado: estado ?? pago.estado
     });
 
