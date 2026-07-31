@@ -98,7 +98,7 @@ const seed = async () => {
       apellidos: 'Gomez',
       correo_electronico: 'cliente@logrod.com',
       telefono: '3159876543',
-      tipo_cliente: 'cliente',
+      tipo_cliente: 'Estudiante',
       contrasenia: passwordCliente
     });
 
