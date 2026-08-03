@@ -52,11 +52,11 @@ export const createCliente = async (req, res, next) => {
         });
     }
 
-    const tiposValidos = ['cliente', 'empleado', 'administrador'];
+    const tiposValidos = ['Estudiante', 'Docente', 'Personal Administrativo', 'Persona externa'];
     if (!tiposValidos.includes(tipo_cliente)) {
         return res.status(400).json({
         success: false,
-        message: 'tipo_cliente debe ser: cliente, empleado o administrador'
+        message: 'tipo_cliente debe ser: Estudiante, Docente, Personal Administrativo o Persona externa'
         });
     }
 
@@ -112,11 +112,11 @@ export const updateCliente = async (req, res, next) => {
     }
 
     if (tipo_cliente) {
-        const tiposValidos = ['cliente', 'empleado', 'administrador'];
+        const tiposValidos = ['Estudiante', 'Docente', 'Personal Administrativo', 'Persona externa'];
         if (!tiposValidos.includes(tipo_cliente)) {
         return res.status(400).json({
             success: false,
-            message: 'tipo_cliente debe ser: cliente, empleado o administrador'
+            message: 'tipo_cliente debe ser: Estudiante, Docente, Personal Administrativo o Persona externa'
         });
         }
     }

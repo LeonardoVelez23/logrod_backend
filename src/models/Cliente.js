@@ -35,7 +35,7 @@ Cliente.init({
     allowNull: true
   },
   tipo_cliente: {
-    type: DataTypes.ENUM('cliente', 'empleado', 'administrador'),
+    type: DataTypes.ENUM('Estudiante', 'Docente', 'Personal Administrativo', 'Persona externa'),
     allowNull: false
   },
   contrasenia: {
