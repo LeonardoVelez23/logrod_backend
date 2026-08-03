@@ -7,11 +7,16 @@ export const getAllPedidos = async (req, res, next) => {
         {
             model: Cliente,
             as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico']
+            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
         },
         {
             model: Empleado,
             as: 'empleadoResponsable',
+            attributes: ['id', 'nombres', 'apellidos', 'cargo']
+        },
+        {
+            model: Empleado,
+            as: 'empleadoPreparacion',
             attributes: ['id', 'nombres', 'apellidos', 'cargo']
         },
         {
@@ -53,6 +58,11 @@ export const getPedidoById = async (req, res, next) => {
             attributes: ['id', 'nombres', 'apellidos', 'cargo']
         },
         {
+            model: Empleado,
+            as: 'empleadoPreparacion',
+            attributes: ['id', 'nombres', 'apellidos', 'cargo']
+        },
+        {
             model: DetallePedido,
             as: 'detalles',
             include: {
@@ -89,7 +99,7 @@ export const createPedido = async (req, res, next) => {
     const t = await sequelize.transaction();
 
     try {
-    const { fecha, hora, modalidad, cliente_id, empleado_id, detalles } = req.body;
+    const { fecha, hora, modalidad, cliente_id, empleado_id, empleado_preparacion_id, detalles } = req.body;
 
     if (!fecha || !hora || !modalidad || !cliente_id || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
         await t.rollback();
@@ -190,7 +200,8 @@ export const createPedido = async (req, res, next) => {
         estado: 'solicitado',
         valor_total: valorTotal,
         cliente_id,
-        empleado_id: empleado_id || null
+        empleado_id: empleado_id || null,
+        empleado_preparacion_id: empleado_preparacion_id || null
         },
         { transaction: t }
     );
@@ -222,7 +233,17 @@ export const createPedido = async (req, res, next) => {
         {
             model: Cliente,
             as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion']
+            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
+        },
+        {
+            model: Empleado,
+            as: 'empleadoResponsable',
+            attributes: ['id', 'nombres', 'apellidos', 'cargo']
+        },
+        {
+            model: Empleado,
+            as: 'empleadoPreparacion',
+            attributes: ['id', 'nombres', 'apellidos', 'cargo']
         },
         {
             model: DetallePedido,
@@ -252,7 +273,7 @@ export const updatePedido = async (req, res, next) => {
 
     try {
     const { id } = req.params;
-    const { estado, empleado_id, modalidad } = req.body;
+    const { estado, empleado_id, empleado_preparacion_id, modalidad } = req.body;
 
     const pedido = await Pedido.findByPk(id, {
         include: [{ model: DetallePedido, as: 'detalles' }],
@@ -268,7 +289,7 @@ export const updatePedido = async (req, res, next) => {
     }
 
     const transiciones = {
-        'solicitado': ['confirmado', 'cancelado'],
+        'solicitado': ['confirmado', 'en preparación', 'cancelado'],
         'confirmado': ['en preparación', 'cancelado'],
         'en preparación': ['listo', 'cancelado'],
         'listo': ['entregado'],
@@ -340,6 +361,7 @@ export const updatePedido = async (req, res, next) => {
     await pedido.update({
         estado: estado ?? pedido.estado,
         empleado_id: empleado_id !== undefined ? empleado_id : pedido.empleado_id,
+        empleado_preparacion_id: empleado_preparacion_id !== undefined ? empleado_preparacion_id : pedido.empleado_preparacion_id,
         modalidad: modalidad ?? pedido.modalidad
     }, { transaction: t });
 
@@ -347,12 +369,13 @@ export const updatePedido = async (req, res, next) => {
 
     const pedidoActualizado = await Pedido.findByPk(id, {
         include: [
-        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos'] },
-        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos'] },
+        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono'] },
+        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos', 'cargo'] },
+        { model: Empleado, as: 'empleadoPreparacion', attributes: ['id', 'nombres', 'apellidos', 'cargo'] },
         {
             model: DetallePedido,
             as: 'detalles',
-            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre'] }
+            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre', 'precio'] }
         }
         ]
     });

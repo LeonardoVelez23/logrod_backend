@@ -17,9 +17,13 @@ Producto.belongsTo(Categoria, { foreignKey: 'categoria_id', as: 'categoria' });
 Cliente.hasMany(Pedido, { foreignKey: 'cliente_id', as: 'pedidos' });
 Pedido.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente' });
 
-// Empleado <-> Pedido (Uno a Muchos)
+// Empleado <-> Pedido (Uno a Muchos) - Atención (Mesero / Repartidor)
 Empleado.hasMany(Pedido, { foreignKey: 'empleado_id', as: 'pedidosAsignados' });
 Pedido.belongsTo(Empleado, { foreignKey: 'empleado_id', as: 'empleadoResponsable' });
+
+// Empleado <-> Pedido (Uno a Muchos) - Preparación (Cocinero)
+Empleado.hasMany(Pedido, { foreignKey: 'empleado_preparacion_id', as: 'pedidosPreparados' });
+Pedido.belongsTo(Empleado, { foreignKey: 'empleado_preparacion_id', as: 'empleadoPreparacion' });
 
 // Pedido <-> DetallePedido (Uno a Muchos)
 Pedido.hasMany(DetallePedido, { foreignKey: 'pedido_id', as: 'detalles' });
