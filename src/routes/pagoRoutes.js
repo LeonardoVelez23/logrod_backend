@@ -6,11 +6,11 @@ const router = Router();
 
 router.use(verifyToken);
 
-router.get('/', restrictTo('admin', 'empleado'), getAllPagos);
+router.get('/', restrictTo('admin', 'empleado', 'cajero'), getAllPagos);
 router.get('/pedido/:pedidoId', getPagoByPedido);
 router.get('/:id', getPagoById);
-router.post('/', restrictTo('cliente', 'admin', 'empleado'), createPago);
-router.put('/:id', restrictTo('admin', 'empleado'), updatePago);
+router.post('/', restrictTo('cliente', 'admin', 'empleado', 'cajero', 'cocinero'), createPago);
+router.put('/:id', restrictTo('admin', 'empleado', 'cajero'), updatePago);
 router.delete('/:id', restrictTo('admin'), deletePago);
 
 export default router;
