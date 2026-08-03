@@ -40,7 +40,17 @@ export const login = async (req, res, next) => {
       
       if (user) {
         const cargo = user.cargo?.toLowerCase() || '';
-        role = (cargo === 'admin' || cargo === 'administrador') ? 'admin' : 'empleado';
+        if (cargo === 'admin' || cargo === 'administrador') {
+          role = 'admin';
+        } else if (cargo === 'mesero') {
+          role = 'mesero';
+        } else if (cargo === 'cajero') {
+          role = 'cajero';
+        } else if (cargo === 'cocinero') {
+          role = 'cocinero';
+        } else {
+          role = 'empleado';
+        }
       }
     }
 

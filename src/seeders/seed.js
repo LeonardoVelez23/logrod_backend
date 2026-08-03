@@ -1,4 +1,4 @@
-import { sequelize, Categoria, Producto, Cliente, Empleado } from './models/index.js';
+import { sequelize, Categoria, Producto, Cliente, Empleado } from '../models/index.js';
 import bcrypt from 'bcryptjs';
 
 const seed = async () => {
