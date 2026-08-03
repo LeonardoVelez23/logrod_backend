@@ -7,8 +7,8 @@ const router = Router();
 
 router.get('/', getAllCategorias);
 router.get('/:id', getCategoriaById);
-router.post('/', verifyToken, restrictTo('admin', 'empleado'), createCategoria);
-router.put('/:id', verifyToken, restrictTo('admin', 'empleado'), updateCategoria);
+router.post('/', verifyToken, restrictTo('admin', 'empleado', 'cajero', 'cocinero'), createCategoria);
+router.put('/:id', verifyToken, restrictTo('admin', 'empleado', 'cajero', 'cocinero'), updateCategoria);
 router.delete('/:id', verifyToken, restrictTo('admin'), deleteCategoria);
 
 export default router;

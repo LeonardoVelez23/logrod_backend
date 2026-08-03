@@ -7,7 +7,7 @@ const router = Router();
 router.use(verifyToken);
 
 router.get('/', restrictTo('admin'), getAllEmpleados);
-router.get('/:id', restrictTo('admin', 'empleado'), getEmpleadoById);
+router.get('/:id', restrictTo('admin', 'empleado', 'cajero', 'cocinero', 'mesero'), getEmpleadoById);
 router.post('/', restrictTo('admin'), createEmpleado);
 router.put('/:id', restrictTo('admin'), updateEmpleado);
 router.delete('/:id', restrictTo('admin'), deleteEmpleado);
