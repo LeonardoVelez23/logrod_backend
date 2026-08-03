@@ -1,4 +1,7 @@
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Producto, Categoria } from '../models/index.js';
+import s3Client from '../config/s3Storage.js';
+import { config } from '../config/env.js';
 
 export const getAllProductos = async (req, res, next) => {
     try {
@@ -197,6 +200,70 @@ export const updateProducto = async (req, res, next) => {
         message: 'Ya existe un producto con ese código'
         });
     }
+    next(error);
+    }
+};
+
+export const uploadImagenProducto = async (req, res, next) => {
+    try {
+    const { id } = req.params;
+
+    if (!s3Client) {
+        return res.status(500).json({
+        success: false,
+        message: 'La subida de imágenes no está configurada en el servidor (faltan credenciales S3 de Supabase Storage)'
+        });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({
+        success: false,
+        message: 'Debe adjuntar un archivo de imagen (campo "imagen")'
+        });
+    }
+
+    const producto = await Producto.findByPk(id);
+    if (!producto) {
+        return res.status(404).json({
+        success: false,
+        message: 'Producto no encontrado'
+        });
+    }
+
+    const extension = req.file.originalname.split('.').pop();
+    const rutaArchivo = `productos/${producto.id}-${Date.now()}.${extension}`;
+
+    try {
+        await s3Client.send(new PutObjectCommand({
+        Bucket: config.s3Bucket,
+        Key: rutaArchivo,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype
+        }));
+    } catch (uploadError) {
+        return res.status(500).json({
+        success: false,
+        message: 'Error al subir la imagen a Supabase Storage: ' + uploadError.message
+        });
+    }
+
+    const imagenUrl = `${config.supabaseUrl}/storage/v1/object/public/${config.s3Bucket}/${rutaArchivo}`;
+    await producto.update({ imagen_url: imagenUrl });
+
+    const productoActualizado = await Producto.findByPk(id, {
+        include: {
+        model: Categoria,
+        as: 'categoria',
+        attributes: ['id', 'nombre']
+        }
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Imagen subida correctamente',
+        data: productoActualizado
+    });
+    } catch (error) {
     next(error);
     }
 };

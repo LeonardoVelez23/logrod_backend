@@ -43,6 +43,10 @@ Producto.init({
       model: 'Categorias',
       key: 'id'
     }
+  },
+  imagen_url: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   sequelize,
