@@ -459,6 +459,25 @@ export const getPedidoStats = async (req, res, next) => {
         // Filtro opcional por fecha del pedido: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
         // (se puede mandar solo uno de los dos). Sin ninguno, se calcula sobre todo el histórico.
         const { desde, hasta } = req.query;
+
+        const esFechaValida = (valor) => {
+            if (!valor) return true;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+            const fecha = new Date(valor);
+            const [anio, mes, dia] = valor.split('-').map(Number);
+            return !Number.isNaN(fecha.getTime())
+                && fecha.getUTCFullYear() === anio
+                && fecha.getUTCMonth() + 1 === mes
+                && fecha.getUTCDate() === dia;
+        };
+
+        if (!esFechaValida(desde) || !esFechaValida(hasta)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Parámetros de fecha inválidos. Formato esperado YYYY-MM-DD'
+            });
+        }
+
         let pedidoWhere;
         if (desde && hasta) {
             pedidoWhere = { fecha: { [Op.between]: [desde, hasta] } };
