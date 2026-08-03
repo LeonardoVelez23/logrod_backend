@@ -2,6 +2,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Producto, Categoria } from '../models/index.js';
 import s3Client from '../config/s3Storage.js';
 import { config } from '../config/env.js';
+import { MIME_A_EXTENSION } from '../middlewares/uploadMiddleware.js';
 
 export const getAllProductos = async (req, res, next) => {
     try {
@@ -230,7 +231,7 @@ export const uploadImagenProducto = async (req, res, next) => {
         });
     }
 
-    const extension = req.file.originalname.split('.').pop();
+    const extension = MIME_A_EXTENSION[req.file.mimetype] || 'bin';
     const rutaArchivo = `productos/${producto.id}-${Date.now()}.${extension}`;
 
     try {

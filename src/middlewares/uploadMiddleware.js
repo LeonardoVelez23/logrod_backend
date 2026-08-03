@@ -1,6 +1,13 @@
 import multer from 'multer';
 
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+export const MIME_A_EXTENSION = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif'
+};
+
+const TIPOS_PERMITIDOS = Object.keys(MIME_A_EXTENSION);
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const storage = multer.memoryStorage();
