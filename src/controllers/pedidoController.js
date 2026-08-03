@@ -7,7 +7,7 @@ export const getAllPedidos = async (req, res, next) => {
         {
             model: Cliente,
             as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico']
+            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
         },
         {
             model: Empleado,
@@ -222,7 +222,12 @@ export const createPedido = async (req, res, next) => {
         {
             model: Cliente,
             as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion']
+            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
+        },
+        {
+            model: Empleado,
+            as: 'empleadoResponsable',
+            attributes: ['id', 'nombres', 'apellidos', 'cargo']
         },
         {
             model: DetallePedido,
@@ -268,7 +273,7 @@ export const updatePedido = async (req, res, next) => {
     }
 
     const transiciones = {
-        'solicitado': ['confirmado', 'cancelado'],
+        'solicitado': ['confirmado', 'en preparación', 'cancelado'],
         'confirmado': ['en preparación', 'cancelado'],
         'en preparación': ['listo', 'cancelado'],
         'listo': ['entregado'],
@@ -347,12 +352,12 @@ export const updatePedido = async (req, res, next) => {
 
     const pedidoActualizado = await Pedido.findByPk(id, {
         include: [
-        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos'] },
-        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos'] },
+        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono'] },
+        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos', 'cargo'] },
         {
             model: DetallePedido,
             as: 'detalles',
-            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre'] }
+            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre', 'precio'] }
         }
         ]
     });
