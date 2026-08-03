@@ -79,16 +79,90 @@ const seed = async () => {
       contrasenia: passwordAdmin
     });
 
-    const empleado = await Empleado.create({
-      identificacion: '1002002002',
-      nombres: 'Ana',
-      apellidos: 'Mesera',
-      correo_electronico: 'empleado@logrod.com',
-      telefono: '3007654321',
-      cargo: 'empleado',
-      turno_trabajo: 'Tarde',
-      contrasenia: passwordEmpleado
-    });
+    const passwordEmpleado2 = await bcrypt.hash('empleado123', salt);
+
+    await Empleado.bulkCreate([
+      {
+        identificacion: '1002002002',
+        nombres: 'Ana',
+        apellidos: 'Vera',
+        correo_electronico: 'empleado@logrod.com',
+        telefono: '3007654321',
+        cargo: 'mesero',
+        turno_trabajo: 'Tarde',
+        contrasenia: passwordEmpleado
+      },
+      {
+        identificacion: '1002002003',
+        nombres: 'Luis',
+        apellidos: 'Morales',
+        correo_electronico: 'luis.morales@logrod.com',
+        telefono: '3102345678',
+        cargo: 'mesero',
+        turno_trabajo: 'Mañana',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002004',
+        nombres: 'Sofía',
+        apellidos: 'Ramírez',
+        correo_electronico: 'sofia.ramirez@logrod.com',
+        telefono: '3113456789',
+        cargo: 'mesero',
+        turno_trabajo: 'Noche',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002005',
+        nombres: 'Jorge',
+        apellidos: 'Torres',
+        correo_electronico: 'jorge.torres@logrod.com',
+        telefono: '3124567890',
+        cargo: 'cajero',
+        turno_trabajo: 'Mañana',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002006',
+        nombres: 'Laura',
+        apellidos: 'Díaz',
+        correo_electronico: 'laura.diaz@logrod.com',
+        telefono: '3135678901',
+        cargo: 'cajero',
+        turno_trabajo: 'Tarde',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002007',
+        nombres: 'Roberto',
+        apellidos: 'Sánchez',
+        correo_electronico: 'roberto.sanchez@logrod.com',
+        telefono: '3146789012',
+        cargo: 'cocinero',
+        turno_trabajo: 'Mañana',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002008',
+        nombres: 'María',
+        apellidos: 'López',
+        correo_electronico: 'maria.lopez@logrod.com',
+        telefono: '3157890123',
+        cargo: 'cocinero',
+        turno_trabajo: 'Tarde',
+        contrasenia: passwordEmpleado2
+      },
+      {
+        identificacion: '1002002009',
+        nombres: 'Pedro',
+        apellidos: 'García',
+        correo_electronico: 'pedro.garcia@logrod.com',
+        telefono: '3168901234',
+        cargo: 'chef',
+        turno_trabajo: 'Mañana',
+        contrasenia: passwordEmpleado2
+      }
+    ]);
 
     // 4. Crear Clientes
     console.log('Creando clientes...');
