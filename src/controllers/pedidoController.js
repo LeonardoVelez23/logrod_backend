@@ -292,19 +292,27 @@ export const updatePedido = async (req, res, next) => {
         'solicitado': ['confirmado', 'en preparación', 'cancelado'],
         'confirmado': ['en preparación', 'cancelado'],
         'en preparación': ['listo', 'cancelado'],
-        'listo': ['entregado'],
+        'listo': ['entregado', 'cancelado'],
         'entregado': [],
         'cancelado': []
     };
 
     if (estado) {
+        if (estado === 'cancelado' && req.user?.rol?.toLowerCase() === 'cocinero') {
+            await t.rollback();
+            return res.status(403).json({
+                success: false,
+                message: 'Los cocineros no tienen permiso para cancelar pedidos'
+            });
+        }
+
         const permitidos = transiciones[pedido.estado] || [];
         if (!permitidos.includes(estado)) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: `No se puede cambiar de "${pedido.estado}" a "${estado}". Transiciones válidas: ${permitidos.join(', ') || 'ninguna (estado final)'}`
-        });
+            await t.rollback();
+            return res.status(400).json({
+                success: false,
+                message: `No se puede cambiar de "${pedido.estado}" a "${estado}". Transiciones válidas: ${permitidos.join(', ') || 'ninguna (estado final)'}`
+            });
         }
     }
 
