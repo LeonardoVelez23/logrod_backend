@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, Pago, sequelize } from '../models/index.js';
 
 export const getAllPedidos = async (req, res, next) => {
@@ -455,11 +456,34 @@ export const deletePedido = async (req, res, next) => {
 
 export const getPedidoStats = async (req, res, next) => {
     try {
-        const totalOrders = await Pedido.count();
+        // Filtro opcional por fecha del pedido: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+        // (se puede mandar solo uno de los dos). Sin ninguno, se calcula sobre todo el histórico.
+        const { desde, hasta } = req.query;
+        let pedidoWhere;
+        if (desde && hasta) {
+            pedidoWhere = { fecha: { [Op.between]: [desde, hasta] } };
+        } else if (desde) {
+            pedidoWhere = { fecha: { [Op.gte]: desde } };
+        } else if (hasta) {
+            pedidoWhere = { fecha: { [Op.lte]: hasta } };
+        }
 
-        const totalRevenueResult = await Pago.sum('valor', { where: { estado: 'aprobado' } });
-        const totalRevenue = Number(totalRevenueResult || 0);
+        const totalOrders = await Pedido.count(pedidoWhere ? { where: pedidoWhere } : undefined);
 
+        let totalRevenue;
+        if (pedidoWhere) {
+            const pedidosFiltrados = await Pedido.findAll({ where: pedidoWhere, attributes: ['id'] });
+            const idsFiltrados = pedidosFiltrados.map(p => p.id);
+            const totalRevenueResult = idsFiltrados.length > 0
+                ? await Pago.sum('valor', { where: { estado: 'aprobado', pedido_id: { [Op.in]: idsFiltrados } } })
+                : 0;
+            totalRevenue = Number(totalRevenueResult || 0);
+        } else {
+            const totalRevenueResult = await Pago.sum('valor', { where: { estado: 'aprobado' } });
+            totalRevenue = Number(totalRevenueResult || 0);
+        }
+
+        // Los clientes registrados son un total global, no dependen del rango de fechas del pedido
         const totalClients = await Cliente.count();
 
         // Distribución por estado
@@ -468,9 +492,10 @@ export const getPedidoStats = async (req, res, next) => {
                 'estado',
                 [sequelize.fn('COUNT', sequelize.col('id')), 'count']
             ],
+            where: pedidoWhere,
             group: ['estado']
         });
-        
+
         const orderStatusDistribution = {};
         distributionRaw.forEach(item => {
             orderStatusDistribution[item.estado] = Number(item.getDataValue('count'));
@@ -489,6 +514,7 @@ export const getPedidoStats = async (req, res, next) => {
                 'modalidad',
                 [sequelize.fn('COUNT', sequelize.col('id')), 'count']
             ],
+            where: pedidoWhere,
             group: ['modalidad']
         });
 
@@ -516,11 +542,19 @@ export const getPedidoStats = async (req, res, next) => {
                 'producto_id',
                 [sequelize.fn('SUM', sequelize.col('cantidad')), 'total_vendido']
             ],
-            include: [{
-                model: Producto,
-                as: 'producto',
-                attributes: ['nombre', 'precio']
-            }],
+            include: [
+                {
+                    model: Producto,
+                    as: 'producto',
+                    attributes: ['nombre', 'precio']
+                },
+                {
+                    model: Pedido,
+                    as: 'pedido',
+                    attributes: [],
+                    where: pedidoWhere
+                }
+            ],
             group: ['producto_id', 'producto.id'],
             order: [[sequelize.fn('SUM', sequelize.col('cantidad')), 'DESC']],
             limit: 5
