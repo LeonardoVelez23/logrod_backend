@@ -46,6 +46,14 @@ Pedido.init({
       model: 'Empleados',
       key: 'id'
     }
+  },
+  empleado_preparacion_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Empleados',
+      key: 'id'
+    }
   }
 }, {
   sequelize,
