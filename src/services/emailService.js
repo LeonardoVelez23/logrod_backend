@@ -17,7 +17,7 @@ const createTransporter = () => {
 /**
  * Enviar correo de restablecimiento de contraseña
  * @param {string} to - Dirección de correo del destinatario
- * @param {string} token - Token único de restablecimiento
+ * @param {string} otp - Código OTP de 6 dígitos para verificación
  * @param {string} nombre - Nombre del usuario
  */
 export const sendPasswordResetEmail = async (to, otp, nombre) => {
@@ -198,7 +198,7 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
     console.log('\n------------------ [EMAIL DE PRUEBA (MODO SIMULADO)] ------------------');
     console.log(`Para: ${to}`);
     console.log(`Asunto: Restablece tu contraseña - Sabor Politécnico`);
-    console.log(`Enlace de Restablecimiento: ${resetUrl}`);
+    console.log(`Código OTP: ${otp}`);
     console.log('-------------------------------------------------------------------------\n');
     return { success: true, simulated: true };
   }
