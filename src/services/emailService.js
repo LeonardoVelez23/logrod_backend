@@ -20,8 +20,7 @@ const createTransporter = () => {
  * @param {string} token - Token único de restablecimiento
  * @param {string} nombre - Nombre del usuario
  */
-export const sendPasswordResetEmail = async (to, token, nombre) => {
-  const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
+export const sendPasswordResetEmail = async (to, otp, nombre) => {
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -29,7 +28,7 @@ export const sendPasswordResetEmail = async (to, token, nombre) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Restablecer Contraseña - Sabor Politécnico</title>
+      <title>Código de verificación - Sabor Politécnico</title>
       <style>
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -39,61 +38,86 @@ export const sendPasswordResetEmail = async (to, token, nombre) => {
           padding: 0;
         }
         .container {
-          max-width: 600px;
+          max-width: 560px;
           margin: 40px auto;
           background-color: #1f2937;
-          border-radius: 12px;
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 10px 40px rgba(0,0,0,0.5);
           border: 1px solid #374151;
         }
         .header {
           background: linear-gradient(135deg, #e11d48, #be123c);
-          padding: 30px;
+          padding: 32px 30px;
           text-align: center;
         }
         .header h1 {
           margin: 0;
-          color: #ffffff;
-          font-size: 24px;
+          color: #fff;
+          font-size: 22px;
           font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+        .header p {
+          margin: 6px 0 0;
+          color: rgba(255,255,255,0.75);
+          font-size: 13px;
         }
         .body {
-          padding: 35px 30px;
-          line-height: 1.6;
+          padding: 36px 32px 28px;
+          line-height: 1.7;
         }
         .body p {
           color: #d1d5db;
           font-size: 15px;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
         }
-        .btn-container {
+        .otp-box {
+          background: linear-gradient(135deg, #111827, #1a2332);
+          border: 2px solid #e11d48;
+          border-radius: 14px;
+          padding: 28px 20px;
           text-align: center;
-          margin: 30px 0;
+          margin: 28px 0;
+          box-shadow: 0 0 30px rgba(225,29,72,0.15);
         }
-        .btn {
-          display: inline-block;
-          background: linear-gradient(135deg, #e11d48, #9f1239);
-          color: #ffffff !important;
-          text-decoration: none;
-          padding: 14px 28px;
-          font-size: 15px;
-          font-weight: 600;
-          border-radius: 8px;
-          box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
-        }
-        .footer {
-          background-color: #111827;
-          padding: 20px;
-          text-align: center;
-          font-size: 13px;
+        .otp-label {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 2px;
           color: #9ca3af;
-          border-top: 1px solid #374151;
+          margin-bottom: 12px;
+        }
+        .otp-code {
+          font-size: 52px;
+          font-weight: 800;
+          letter-spacing: 14px;
+          color: #f9fafb;
+          font-family: 'Courier New', monospace;
+          text-shadow: 0 0 20px rgba(225,29,72,0.4);
+        }
+        .otp-expiry {
+          margin-top: 12px;
+          font-size: 12px;
+          color: #f87171;
+          font-weight: 600;
         }
         .note {
           font-size: 13px;
           color: #9ca3af;
-          margin-top: 25px;
+          margin-top: 20px;
+          padding: 14px 16px;
+          background-color: #111827;
+          border-radius: 8px;
+          border-left: 3px solid #374151;
+        }
+        .footer {
+          background-color: #111827;
+          padding: 18px 20px;
+          text-align: center;
+          font-size: 12px;
+          color: #6b7280;
+          border-top: 1px solid #374151;
         }
       </style>
     </head>
@@ -101,20 +125,26 @@ export const sendPasswordResetEmail = async (to, token, nombre) => {
       <div class="container">
         <div class="header">
           <h1>🍽️ Sabor Politécnico</h1>
+          <p>Restablecimiento de contraseña</p>
         </div>
         <div class="body">
-          <p>Hola <strong>${nombre}</strong>,</p>
-          <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>Sabor Politécnico</strong>.</p>
-          <p>Para crear una nueva contraseña, haz clic en el siguiente botón:</p>
-          
-          <div class="btn-container">
-            <a href="${resetUrl}" class="btn" target="_blank">Restablecer mi Contraseña</a>
+          <p>Hola <strong style="color:#f9fafb">${nombre}</strong>,</p>
+          <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta. Usa el siguiente código de verificación:</p>
+
+          <div class="otp-box">
+            <div class="otp-label">Tu código de verificación</div>
+            <div class="otp-code">${otp}</div>
+            <div class="otp-expiry">⏱ Válido por 15 minutos</div>
           </div>
-          
-          <p class="note">⚠️ Este enlace de restablecimiento es válido únicamente durante <strong>1 hora</strong>. Si tú no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+
+          <p>Ingresa este código en la pantalla de recuperación de contraseña de <strong style="color:#f9fafb">Sabor Politécnico</strong> junto con tu nueva contraseña.</p>
+
+          <div class="note">
+            🔒 Si tú no solicitaste este cambio, puedes ignorar este correo. Tu contraseña actual permanecerá sin cambios.
+          </div>
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Sabor Politécnico. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} Sabor Politécnico — ESPAM Manuel Félix López</p>
         </div>
       </div>
     </body>

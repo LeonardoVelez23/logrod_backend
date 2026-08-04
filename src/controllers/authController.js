@@ -119,44 +119,49 @@ export const forgotPassword = async (req, res, next) => {
 
     // Buscar en Clientes y luego en Empleados
     let user = await Cliente.findOne({ where: { correo_electronico: cleanEmail } });
-    let isCliente = true;
 
     if (!user) {
       user = await Empleado.findOne({ where: { correo_electronico: cleanEmail } });
-      isCliente = false;
     }
 
     // Por seguridad, responder éxito genérico incluso si el correo no existe
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: 'Si el correo electrónico está registrado, recibirás las instrucciones para restablecer tu contraseña.'
+        message: 'Si el correo está registrado, recibirás el código de verificación.'
       });
     }
 
-    // Generar token único seguro y fecha de expiración (1 hora)
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora de vigencia
+    // Si ya existe un OTP válido y no ha expirado, reutilizarlo (evitar sobrescribir)
+    let otp = user.reset_password_token;
+    let otpExpires = user.reset_password_expires;
+    const now = new Date();
 
-    await user.update({
-      reset_password_token: resetToken,
-      reset_password_expires: resetExpires
-    });
+    if (!otp || !otpExpires || otpExpires <= now) {
+      // Generar nuevo OTP de 6 dígitos solo si no hay uno vigente
+      otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpExpires = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutos
 
-    // Enviar correo electrónico
+      await user.update({
+        reset_password_token: otp,
+        reset_password_expires: otpExpires
+      });
+    }
+
+    // Enviar correo con el OTP (nuevo o reutilizado)
     try {
-      await sendPasswordResetEmail(user.correo_electronico, resetToken, `${user.nombres} ${user.apellidos}`);
+      await sendPasswordResetEmail(user.correo_electronico, otp, `${user.nombres} ${user.apellidos}`);
     } catch (emailError) {
-      console.error('Error enviando correo de recuperación:', emailError);
+      console.error('Error enviando OTP de recuperación:', emailError);
       return res.status(500).json({
         success: false,
-        message: 'No se pudo enviar el correo de recuperación. Inténtalo de nuevo más tarde.'
+        message: 'No se pudo enviar el código de verificación. Inténtalo de nuevo más tarde.'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Si el correo electrónico está registrado, recibirás las instrucciones para restablecer tu contraseña.'
+      message: 'Si el correo está registrado, recibirás el código de verificación.'
     });
   } catch (error) {
     next(error);
@@ -168,26 +173,37 @@ export const forgotPassword = async (req, res, next) => {
  */
 export const resetPassword = async (req, res, next) => {
   try {
-    const { token, newPassword } = req.body;
+    const { email, otp, newPassword } = req.body;
 
-    if (!token || !newPassword) {
+    if (!email || !otp || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Token y nueva contraseña son requeridos'
+        message: 'Correo, código OTP y nueva contraseña son requeridos'
       });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'La contraseña debe tener al menos 6 caracteres'
-      });
+    // Validar fortaleza de la contraseña
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos una letra mayúscula.' });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un número.' });
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un carácter especial.' });
     }
 
-    // Buscar en Clientes
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+
+    // Buscar en Clientes por email + OTP válido
     let user = await Cliente.findOne({
       where: {
-        reset_password_token: token,
+        correo_electronico: cleanEmail,
+        reset_password_token: cleanOtp,
         reset_password_expires: { [Op.gt]: new Date() }
       }
     });
@@ -196,7 +212,8 @@ export const resetPassword = async (req, res, next) => {
     if (!user) {
       user = await Empleado.findOne({
         where: {
-          reset_password_token: token,
+          correo_electronico: cleanEmail,
+          reset_password_token: cleanOtp,
           reset_password_expires: { [Op.gt]: new Date() }
         }
       });
@@ -205,7 +222,7 @@ export const resetPassword = async (req, res, next) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: 'El enlace de restablecimiento es inválido o ha expirado. Por favor, solicita uno nuevo.'
+        message: 'El código ingresado es incorrecto o ha expirado. Solicita uno nuevo.'
       });
     }
 
@@ -213,7 +230,7 @@ export const resetPassword = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Actualizar contraseña y limpiar token de recuperación
+    // Actualizar contraseña y limpiar OTP
     await user.update({
       contrasenia: hashedPassword,
       reset_password_token: null,
