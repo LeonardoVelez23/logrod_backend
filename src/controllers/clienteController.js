@@ -100,7 +100,14 @@ export const createCliente = async (req, res, next) => {
 export const updateCliente = async (req, res, next) => {
     try {
     const { id } = req.params;
-    const { identificacion, nombres, apellidos, correo_electronico, telefono, tipo_cliente, contrasenia } = req.body;
+    const { identificacion, nombres, apellidos, correo_electronico, telefono, tipo_cliente, contrasenia, otp } = req.body;
+
+    if (req.user && req.user.rol !== 'admin' && String(req.user.id) !== String(id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para modificar este perfil'
+      });
+    }
 
     const cliente = await Cliente.findByPk(id);
 
@@ -122,9 +129,36 @@ export const updateCliente = async (req, res, next) => {
     }
 
     let contraseniaUpdate = cliente.contrasenia;
+    let resetTokenUpdate = cliente.reset_password_token;
+    let resetExpiresUpdate = cliente.reset_password_expires;
+
     if (contrasenia) {
+        if (!otp) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
+            });
+        }
+
+        const cleanOtp = String(otp).trim();
+        const now = new Date();
+
+        if (
+            !cliente.reset_password_token ||
+            String(cliente.reset_password_token).trim() !== cleanOtp ||
+            !cliente.reset_password_expires ||
+            new Date(cliente.reset_password_expires) <= now
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
+            });
+        }
+
         const salt = await bcrypt.genSalt(10);
         contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
+        resetTokenUpdate = null;
+        resetExpiresUpdate = null;
     }
 
     await cliente.update({
@@ -134,7 +168,9 @@ export const updateCliente = async (req, res, next) => {
         correo_electronico: correo_electronico?.trim().toLowerCase() ?? cliente.correo_electronico,
         telefono: telefono !== undefined ? (telefono?.trim() || null) : cliente.telefono,
         tipo_cliente: tipo_cliente ?? cliente.tipo_cliente,
-        contrasenia: contraseniaUpdate
+        contrasenia: contraseniaUpdate,
+        reset_password_token: resetTokenUpdate,
+        reset_password_expires: resetExpiresUpdate
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();
