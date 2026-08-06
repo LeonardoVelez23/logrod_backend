@@ -148,9 +148,11 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    console.log('\n=================================================');
-    console.log(`🔑 [CÓDIGO OTP ENVIADO A ${user.correo_electronico}]: ${otp}`);
-    console.log('=================================================\n');
+    if (config.nodeEnv === 'development') {
+      console.log('\n=================================================');
+      console.log(`🔑 [CÓDIGO OTP ENVIADO A ${user.correo_electronico}]: ${otp}`);
+      console.log('=================================================\n');
+    }
 
     // Enviar correo con el OTP (nuevo o reutilizado)
     try {
