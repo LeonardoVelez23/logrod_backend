@@ -124,11 +124,11 @@ export const forgotPassword = async (req, res, next) => {
       user = await Empleado.findOne({ where: { correo_electronico: cleanEmail } });
     }
 
-    // Por seguridad, responder éxito genérico incluso si el correo no existe
+    // Validar si el usuario/correo existe en el sistema
     if (!user) {
-      return res.status(200).json({
-        success: true,
-        message: 'Si el correo está registrado, recibirás el código de verificación.'
+      return res.status(404).json({
+        success: false,
+        message: 'El correo electrónico ingresado no se encuentra registrado en el sistema.'
       });
     }
 
