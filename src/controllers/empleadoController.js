@@ -116,26 +116,30 @@ export const updateEmpleado = async (req, res, next) => {
     let resetExpiresUpdate = empleado.reset_password_expires;
 
     if (contrasenia) {
-        if (!otp) {
-            return res.status(400).json({
-                success: false,
-                message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
-            });
-        }
+        const isAdmin = req.user && req.user.rol === 'admin';
 
-        const cleanOtp = String(otp).trim();
-        const now = new Date();
+        if (!isAdmin) {
+            if (!otp) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
+                });
+            }
 
-        if (
-            !empleado.reset_password_token ||
-            String(empleado.reset_password_token).trim() !== cleanOtp ||
-            !empleado.reset_password_expires ||
-            new Date(empleado.reset_password_expires) <= now
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
-            });
+            const cleanOtp = String(otp).trim();
+            const now = new Date();
+
+            if (
+                !empleado.reset_password_token ||
+                String(empleado.reset_password_token).trim() !== cleanOtp ||
+                !empleado.reset_password_expires ||
+                new Date(empleado.reset_password_expires) <= now
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
+                });
+            }
         }
 
         const salt = await bcrypt.genSalt(10);
