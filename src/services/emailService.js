@@ -186,10 +186,12 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
         console.log(`Correo de recuperación enviado exitosamente a ${to} vía Brevo API. ID: ${data.messageId}`);
         return { success: true, messageId: data.messageId };
       } else {
-        console.warn('Respuesta de Brevo API:', data);
+        console.warn(' Respuesta de error de Brevo API:', data);
+        throw new Error(`Brevo API Error (${response.status}): ${data.message || JSON.stringify(data)}`);
       }
     } catch (brevoErr) {
       console.error('Error al conectar con la API de Brevo:', brevoErr);
+      throw brevoErr;
     }
   }
 
