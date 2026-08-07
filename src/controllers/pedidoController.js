@@ -3,7 +3,15 @@ import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, Pago, se
 
 export const getAllPedidos = async (req, res, next) => {
     try {
+    const where = {};
+    if (req.user?.rol === 'cliente') {
+        where.cliente_id = req.user.id;
+    } else if (req.query.cliente_id) {
+        where.cliente_id = req.query.cliente_id;
+    }
+
     const pedidos = await Pedido.findAll({
+        where,
         include: [
         {
             model: Cliente,
@@ -84,6 +92,13 @@ export const getPedidoById = async (req, res, next) => {
         return res.status(404).json({
         success: false,
         message: 'Pedido no encontrado'
+        });
+    }
+
+    if (req.user?.rol === 'cliente' && pedido.cliente_id !== req.user.id) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para consultar este pedido'
         });
     }
 
