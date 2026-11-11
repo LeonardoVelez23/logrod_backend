@@ -71,6 +71,19 @@ npm run seed
 Usuarios del seed: `cliente@logrod.com` / `cliente123`, `admin@logrod.com` / `admin123`, empleados con `empleado123`.
 Con una URL que no es de Supabase la conexión va sin SSL.
 
+`JWT_SECRET` es **obligatorio**: sin él el servidor no arranca (ver `.env.example`). En el servidor de producción debe configurarse antes de desplegar.
+
+## Tests
+
+Usan una base aparte, `logrod_test`, que se recrea con las migraciones en cada ejecución:
+
+```bash
+podman exec logrod-postgres createdb -U logrod logrod_test   # solo la primera vez
+npm test
+```
+
+Otra base: `TEST_DATABASE_URL=postgres://.../algo_test npm test` (el nombre debe terminar en `_test`).
+
 ## Ejecutar el proyecto
 
 ### Modo desarrollo

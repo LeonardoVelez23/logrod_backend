@@ -33,7 +33,7 @@ export const getPagoById = async (req, res, next) => {
         include: {
         model: Pedido,
         as: 'pedido',
-        attributes: ['id', 'fecha', 'hora', 'valor_total', 'estado', 'modalidad'],
+        attributes: ['id', 'fecha', 'hora', 'valor_total', 'estado', 'modalidad', 'cliente_id'],
         include: {
             model: Cliente,
             as: 'cliente',
@@ -49,6 +49,13 @@ export const getPagoById = async (req, res, next) => {
         });
     }
 
+    if (req.user.rol === 'cliente' && pago.pedido?.cliente_id !== req.user.id) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver este pago'
+        });
+    }
+
     res.status(200).json({
         success: true,
         data: pago
@@ -61,6 +68,16 @@ export const getPagoById = async (req, res, next) => {
 export const getPagoByPedido = async (req, res, next) => {
     try {
     const { pedidoId } = req.params;
+
+    if (req.user.rol === 'cliente') {
+        const pedido = await Pedido.findByPk(pedidoId, { attributes: ['id', 'cliente_id'] });
+        if (pedido && pedido.cliente_id !== req.user.id) {
+        return res.status(403).json({
+            success: false,
+            message: 'No tiene permisos para ver este pago'
+        });
+        }
+    }
 
     const pago = await Pago.findOne({
         where: { pedido_id: pedidoId },
@@ -113,7 +130,10 @@ export const createPago = async (req, res, next) => {
         });
     }
 
-    const estadoFinal = estado || 'pendiente';
+    // Un cliente no aprueba su propio pago: queda pendiente hasta que el
+    // personal lo confirme (la pasarela en línea es simulada, RF-22).
+    const esCliente = req.user.rol === 'cliente';
+    const estadoFinal = esCliente ? 'pendiente' : estado || 'pendiente';
     const estadosValidos = ['pendiente', 'aprobado', 'rechazado'];
     if (!estadosValidos.includes(estadoFinal)) {
         return res.status(400).json({
@@ -127,6 +147,13 @@ export const createPago = async (req, res, next) => {
         return res.status(400).json({
         success: false,
         message: 'El pedido indicado no existe'
+        });
+    }
+
+    if (esCliente && pedido.cliente_id !== req.user.id) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para pagar este pedido'
         });
     }
 

@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_resto_logrod_2026';
+import { config } from '../config/env.js';
 
 export const verifyToken = (req, res, next) => {
   try {
@@ -15,7 +14,7 @@ export const verifyToken = (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwtSecret);
     req.user = decoded; // Contains id, identificacion, nombres, apellidos, correo_electronico, rol
     next();
   } catch (error) {

@@ -2,11 +2,21 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Sin secreto propio cualquiera podría firmar tokens válidos (p. ej. de admin).
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    'JWT_SECRET no está definido. Agrégalo al .env (ver .env.example) o a las variables del servidor.'
+  );
+}
+
 export const config = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   databaseUrl: process.env.DATABASE_URL,
+  jwtSecret: process.env.JWT_SECRET,
+  // Límite de peticiones en /auth. Solo se desactiva en los tests.
+  rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
   s3Endpoint: process.env.S3_ENDPOINT,
   s3Region: process.env.S3_REGION,
   s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,

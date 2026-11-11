@@ -2,11 +2,13 @@ import { Cliente, Empleado } from '../models/index.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
-import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { config } from '../config/env.js';
+import { emitirOtp, verificarOtp, otpLimpio } from '../services/otpService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_resto_logrod_2026';
+const buscarPorCorreo = async (correo) =>
+  (await Cliente.findOne({ where: { correo_electronico: correo } })) ??
+  (await Empleado.findOne({ where: { correo_electronico: correo } }));
 
 export const login = async (req, res, next) => {
   try {
@@ -80,7 +82,7 @@ export const login = async (req, res, next) => {
         correo_electronico: user.correo_electronico,
         rol: role
       },
-      JWT_SECRET,
+      config.jwtSecret,
       { expiresIn: '8h' }
     );
 
@@ -117,12 +119,7 @@ export const forgotPassword = async (req, res, next) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Buscar en Clientes y luego en Empleados
-    let user = await Cliente.findOne({ where: { correo_electronico: cleanEmail } });
-
-    if (!user) {
-      user = await Empleado.findOne({ where: { correo_electronico: cleanEmail } });
-    }
+    const user = await buscarPorCorreo(cleanEmail);
 
     // Por seguridad, responder éxito genérico incluso si el correo no existe
     if (!user) {
@@ -132,21 +129,8 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    // Si ya existe un OTP válido y no ha expirado, reutilizarlo (evitar sobrescribir)
-    let otp = user.reset_password_token;
-    let otpExpires = user.reset_password_expires;
-    const now = new Date();
-
-    if (!otp || !otpExpires || otpExpires <= now) {
-      // Generar nuevo OTP de 6 dígitos solo si no hay uno vigente
-      otp = Math.floor(100000 + Math.random() * 900000).toString();
-      otpExpires = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutos
-
-      await user.update({
-        reset_password_token: otp,
-        reset_password_expires: otpExpires
-      });
-    }
+    // Cada solicitud genera un código nuevo e invalida el anterior.
+    const otp = await emitirOtp(user);
 
     if (config.nodeEnv === 'development') {
       console.log('\n=================================================');
@@ -154,7 +138,7 @@ export const forgotPassword = async (req, res, next) => {
       console.log('=================================================\n');
     }
 
-    // Enviar correo con el OTP (nuevo o reutilizado)
+    // Enviar correo con el OTP
     try {
       await sendPasswordResetEmail(user.correo_electronico, otp, `${user.nombres} ${user.apellidos}`);
     } catch (emailError) {
@@ -203,29 +187,10 @@ export const resetPassword = async (req, res, next) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanOtp = otp.trim();
 
-    // Buscar en Clientes por email + OTP válido
-    let user = await Cliente.findOne({
-      where: {
-        correo_electronico: cleanEmail,
-        reset_password_token: cleanOtp,
-        reset_password_expires: { [Op.gt]: new Date() }
-      }
-    });
+    const user = await buscarPorCorreo(cleanEmail);
 
-    // Buscar en Empleados si no se encontró en Clientes
-    if (!user) {
-      user = await Empleado.findOne({
-        where: {
-          correo_electronico: cleanEmail,
-          reset_password_token: cleanOtp,
-          reset_password_expires: { [Op.gt]: new Date() }
-        }
-      });
-    }
-
-    if (!user) {
+    if (!user || !(await verificarOtp(user, otp))) {
       return res.status(400).json({
         success: false,
         message: 'El código ingresado es incorrecto o ha expirado. Solicita uno nuevo.'
@@ -237,11 +202,7 @@ export const resetPassword = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     // Actualizar contraseña y limpiar OTP
-    await user.update({
-      contrasenia: hashedPassword,
-      reset_password_token: null,
-      reset_password_expires: null
-    });
+    await user.update({ contrasenia: hashedPassword, ...otpLimpio });
 
     res.status(200).json({
       success: true,

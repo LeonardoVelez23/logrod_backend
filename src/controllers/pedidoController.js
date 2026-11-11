@@ -87,6 +87,14 @@ export const getPedidoById = async (req, res, next) => {
         });
     }
 
+    // Un cliente solo puede ver sus propios pedidos.
+    if (req.user.rol === 'cliente' && pedido.cliente_id !== req.user.id) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver este pedido'
+        });
+    }
+
     res.status(200).json({
         success: true,
         data: pedido

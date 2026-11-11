@@ -1,5 +1,6 @@
 import { Cliente } from '../models/index.js';
 import bcrypt from 'bcryptjs';
+import { verificarOtp, otpLimpio } from '../services/otpService.js';
 
 export const getAllClientes = async (req, res, next) => {
     try {
@@ -20,6 +21,14 @@ export const getAllClientes = async (req, res, next) => {
 export const getClienteById = async (req, res, next) => {
     try {
     const { id } = req.params;
+
+    // Un cliente solo puede ver su propio perfil.
+    if (req.user.rol === 'cliente' && String(req.user.id) !== String(id)) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver este perfil'
+        });
+    }
 
     const cliente = await Cliente.findByPk(id, {
         attributes: { exclude: ['contrasenia'] }
@@ -128,9 +137,7 @@ export const updateCliente = async (req, res, next) => {
         }
     }
 
-    let contraseniaUpdate = cliente.contrasenia;
-    let resetTokenUpdate = cliente.reset_password_token;
-    let resetExpiresUpdate = cliente.reset_password_expires;
+    let cambioContrasenia = {};
 
     if (contrasenia) {
         if (!otp) {
@@ -140,15 +147,7 @@ export const updateCliente = async (req, res, next) => {
             });
         }
 
-        const cleanOtp = String(otp).trim();
-        const now = new Date();
-
-        if (
-            !cliente.reset_password_token ||
-            String(cliente.reset_password_token).trim() !== cleanOtp ||
-            !cliente.reset_password_expires ||
-            new Date(cliente.reset_password_expires) <= now
-        ) {
+        if (!(await verificarOtp(cliente, otp))) {
             return res.status(400).json({
                 success: false,
                 message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
@@ -156,9 +155,7 @@ export const updateCliente = async (req, res, next) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-        contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
-        resetTokenUpdate = null;
-        resetExpiresUpdate = null;
+        cambioContrasenia = { contrasenia: await bcrypt.hash(contrasenia, salt), ...otpLimpio };
     }
 
     await cliente.update({
@@ -168,9 +165,7 @@ export const updateCliente = async (req, res, next) => {
         correo_electronico: correo_electronico?.trim().toLowerCase() ?? cliente.correo_electronico,
         telefono: telefono !== undefined ? (telefono?.trim() || null) : cliente.telefono,
         tipo_cliente: tipo_cliente ?? cliente.tipo_cliente,
-        contrasenia: contraseniaUpdate,
-        reset_password_token: resetTokenUpdate,
-        reset_password_expires: resetExpiresUpdate
+        ...cambioContrasenia
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();

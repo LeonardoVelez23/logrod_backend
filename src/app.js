@@ -11,6 +11,13 @@ import { xssSanitizer } from './middlewares/xssSanitizer.js';
 
 const app = express();
 
+// En producción la API va detrás del proxy de la plataforma de hosting:
+// sin esto todas las peticiones tendrían la IP del proxy (y el límite de
+// intentos sería compartido por todos los usuarios).
+if (config.nodeEnv === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Middlewares de seguridad y utilidad
 app.use(helmet());
 app.use(cors({ origin: config.corsOrigin }));

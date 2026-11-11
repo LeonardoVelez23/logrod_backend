@@ -1,5 +1,6 @@
 import { Empleado } from '../models/index.js';
 import bcrypt from 'bcryptjs';
+import { verificarOtp, otpLimpio } from '../services/otpService.js';
 
 export const getAllEmpleados = async (req, res, next) => {
     try {
@@ -20,6 +21,14 @@ export const getAllEmpleados = async (req, res, next) => {
 export const getEmpleadoById = async (req, res, next) => {
     try {
     const { id } = req.params;
+
+    // El personal que no es admin solo puede ver su propio perfil.
+    if (req.user.rol !== 'admin' && String(req.user.id) !== String(id)) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver este perfil'
+        });
+    }
 
     const empleado = await Empleado.findByPk(id, {
         attributes: { exclude: ['contrasenia'] }
@@ -111,9 +120,22 @@ export const updateEmpleado = async (req, res, next) => {
         });
     }
 
-    let contraseniaUpdate = empleado.contrasenia;
-    let resetTokenUpdate = empleado.reset_password_token;
-    let resetExpiresUpdate = empleado.reset_password_expires;
+    // Solo el administrador cambia cargo y turno: el cargo define el rol,
+    // así que un empleado podría darse permisos de admin.
+    if (req.user.rol !== 'admin') {
+        const normalizar = (valor) => (valor === undefined ? undefined : valor?.trim() || null);
+        const cambiaCargo = cargo !== undefined && normalizar(cargo) !== empleado.cargo;
+        const cambiaTurno =
+            turno_trabajo !== undefined && normalizar(turno_trabajo) !== empleado.turno_trabajo;
+        if (cambiaCargo || cambiaTurno) {
+            return res.status(403).json({
+                success: false,
+                message: 'Solo el administrador puede cambiar el cargo o el turno de trabajo'
+            });
+        }
+    }
+
+    let cambioContrasenia = {};
 
     if (contrasenia) {
         if (!otp) {
@@ -123,15 +145,7 @@ export const updateEmpleado = async (req, res, next) => {
             });
         }
 
-        const cleanOtp = String(otp).trim();
-        const now = new Date();
-
-        if (
-            !empleado.reset_password_token ||
-            String(empleado.reset_password_token).trim() !== cleanOtp ||
-            !empleado.reset_password_expires ||
-            new Date(empleado.reset_password_expires) <= now
-        ) {
+        if (!(await verificarOtp(empleado, otp))) {
             return res.status(400).json({
                 success: false,
                 message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
@@ -139,9 +153,7 @@ export const updateEmpleado = async (req, res, next) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-        contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
-        resetTokenUpdate = null;
-        resetExpiresUpdate = null;
+        cambioContrasenia = { contrasenia: await bcrypt.hash(contrasenia, salt), ...otpLimpio };
     }
 
     await empleado.update({
@@ -152,9 +164,7 @@ export const updateEmpleado = async (req, res, next) => {
         telefono: telefono !== undefined ? (telefono?.trim() || null) : empleado.telefono,
         cargo: cargo !== undefined ? (cargo?.trim() || null) : empleado.cargo,
         turno_trabajo: turno_trabajo !== undefined ? (turno_trabajo?.trim() || null) : empleado.turno_trabajo,
-        contrasenia: contraseniaUpdate,
-        reset_password_token: resetTokenUpdate,
-        reset_password_expires: resetExpiresUpdate
+        ...cambioContrasenia
     });
 
     const { contrasenia: _, ...empleadoSinPassword } = empleado.toJSON();
