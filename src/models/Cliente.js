@@ -1,7 +1,17 @@
 import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-class Cliente extends Model {}
+// Campos que nunca deben salir en una respuesta JSON: la contraseña y el OTP
+// de recuperación (con el OTP cualquiera podría cambiar la contraseña).
+const CAMPOS_PRIVADOS = ['contrasenia', 'reset_password_token', 'reset_password_expires'];
+
+class Cliente extends Model {
+  toJSON() {
+    const values = { ...this.get() };
+    for (const campo of CAMPOS_PRIVADOS) delete values[campo];
+    return values;
+  }
+}
 
 Cliente.init({
   id: {
