@@ -1,0 +1,19 @@
+# Base de datos local para desarrollo.
+#   podman compose up -d   (o: docker compose up -d)
+# .env: DATABASE_URL=postgres://logrod:logrod@localhost:5432/logrod
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: logrod-postgres
+    environment:
+      POSTGRES_USER: logrod
+      POSTGRES_PASSWORD: logrod
+      POSTGRES_DB: logrod
+    ports:
+      - "5432:5432"
+    volumes:
+      - logrod-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  logrod-pgdata:

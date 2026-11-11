@@ -47,6 +47,30 @@ CORS_ORIGIN=*
 - `NODE_ENV`: entorno de ejecución (`development`, `production`, etc.)
 - `CORS_ORIGIN`: origen permitido para solicitudes CORS
 
+## Base de datos local (desarrollo)
+
+Para trabajar sin Supabase hay un PostgreSQL en `compose.yaml`:
+
+```bash
+podman compose up -d        # o: docker compose up -d
+```
+
+En `.env`:
+
+```
+DATABASE_URL=postgres://logrod:logrod@localhost:5432/logrod
+```
+
+Luego crear las tablas y los datos de prueba:
+
+```bash
+npx sequelize-cli db:migrate
+npm run seed
+```
+
+Usuarios del seed: `cliente@logrod.com` / `cliente123`, `admin@logrod.com` / `admin123`, empleados con `empleado123`.
+Con una URL que no es de Supabase la conexión va sin SSL.
+
 ## Ejecutar el proyecto
 
 ### Modo desarrollo
