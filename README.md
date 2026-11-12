@@ -40,12 +40,19 @@ El archivo `.env` acepta las siguientes variables:
 ```env
 PORT=3000
 NODE_ENV=development
-CORS_ORIGIN=*
+JWT_SECRET=<cadena aleatoria larga>
+DATABASE_URL=postgresql://...
+CORS_ORIGIN=https://saborpolitecnico.netlify.app
+APP_TIMEZONE=America/Guayaquil
 ```
 
 - `PORT`: puerto donde correrá la API
 - `NODE_ENV`: entorno de ejecución (`development`, `production`, etc.)
-- `CORS_ORIGIN`: origen permitido para solicitudes CORS
+- `JWT_SECRET`: obligatorio; sin él la API no arranca
+- `CORS_ORIGIN`: dominios web permitidos, separados por coma. Vacío: cualquiera en desarrollo y ninguno en producción. La app móvil no lo necesita.
+- `APP_TIMEZONE`: zona horaria de la fecha y hora de los pedidos (por defecto `America/Guayaquil`)
+
+Ver `.env.example` para el correo (Brevo/SMTP).
 
 ## Base de datos local (desarrollo)
 
