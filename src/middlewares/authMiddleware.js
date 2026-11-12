@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
-import { Cliente, Empleado } from '../models/index.js';
-import { rolDeCargo } from '../utils/roles.js';
+import { rolVigente } from '../services/sesionService.js';
 
 const noAutorizado = (res, message) => res.status(401).json({ success: false, message });
 
@@ -24,17 +23,13 @@ export const verifyToken = async (req, res, next) => {
   }
 
   try {
-    const esCliente = decoded.rol === 'cliente';
-    const usuario = esCliente
-      ? await Cliente.findByPk(decoded.id, { attributes: ['id'] })
-      : await Empleado.findByPk(decoded.id, { attributes: ['id', 'cargo'] });
-
-    if (!usuario) {
+    const rol = await rolVigente(decoded);
+    if (!rol) {
       return noAutorizado(res, 'La sesión ya no es válida. Inicia sesión de nuevo.');
     }
 
     // Contiene id, identificacion, nombres, apellidos, correo_electronico y rol.
-    req.user = { ...decoded, rol: esCliente ? 'cliente' : rolDeCargo(usuario.cargo) };
+    req.user = { ...decoded, rol };
     next();
   } catch (error) {
     next(error);

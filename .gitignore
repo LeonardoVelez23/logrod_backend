@@ -15,3 +15,6 @@ npm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Reporte de cobertura (npm run test:coverage), se genera en local
+coverage/

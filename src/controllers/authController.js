@@ -112,7 +112,8 @@ export const forgotPassword = async (req, res, next) => {
 
     const user = await buscarPorCorreo(cleanEmail);
 
-    // Por seguridad, responder éxito genérico incluso si el correo no existe
+    // Por seguridad (RNF-06), responder lo mismo exista o no el correo:
+    // un 404 permitiría averiguar qué correos tienen cuenta.
     if (!user) {
       return res.status(200).json({
         success: true,
