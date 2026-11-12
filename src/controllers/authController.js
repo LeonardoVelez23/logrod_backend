@@ -5,6 +5,8 @@ import { Op } from 'sequelize';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { config } from '../config/env.js';
 import { emitirOtp, verificarOtp, otpLimpio } from '../services/otpService.js';
+import { errorDeContrasenia } from '../utils/password.js';
+import { rolDeCargo } from '../utils/roles.js';
 
 const buscarPorCorreo = async (correo) =>
   (await Cliente.findOne({ where: { correo_electronico: correo } })) ??
@@ -43,18 +45,7 @@ export const login = async (req, res, next) => {
       });
       
       if (user) {
-        const cargo = user.cargo?.toLowerCase() || '';
-        if (cargo === 'admin' || cargo === 'administrador') {
-          role = 'admin';
-        } else if (cargo === 'mesero') {
-          role = 'mesero';
-        } else if (cargo === 'cajero') {
-          role = 'cajero';
-        } else if (cargo === 'cocinero') {
-          role = 'cocinero';
-        } else {
-          role = 'empleado';
-        }
+        role = rolDeCargo(user.cargo);
       }
     }
 
@@ -138,15 +129,13 @@ export const forgotPassword = async (req, res, next) => {
       console.log('=================================================\n');
     }
 
-    // Enviar correo con el OTP
+    // Enviar correo con el OTP. Si falla, se registra y se responde igual
+    // que para un correo no registrado: un error distinto revelaría que la
+    // cuenta existe (RNF-06).
     try {
       await sendPasswordResetEmail(user.correo_electronico, otp, `${user.nombres} ${user.apellidos}`);
     } catch (emailError) {
       console.error('Error enviando OTP de recuperación:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: 'No se pudo enviar el código de verificación. Inténtalo de nuevo más tarde.'
-      });
     }
 
     res.status(200).json({
@@ -172,18 +161,9 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Validar fortaleza de la contraseña
-    if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos una letra mayúscula.' });
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un número.' });
-    }
-    if (!/[^A-Za-z0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un carácter especial.' });
+    const errorContrasenia = errorDeContrasenia(newPassword);
+    if (errorContrasenia) {
+      return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
     const cleanEmail = email.trim().toLowerCase();

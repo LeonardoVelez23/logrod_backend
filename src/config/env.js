@@ -12,7 +12,8 @@ if (!process.env.JWT_SECRET) {
 export const config = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  // Ver src/config/cors.js.
+  corsOrigin: process.env.CORS_ORIGIN,
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
   // Límite de peticiones en /auth. Solo se desactiva en los tests.

@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config/env.js';
+import { escaparHtml } from '../utils/html.js';
 
 // Crear el transportador SMTP
 const createTransporter = () => {
@@ -32,22 +33,22 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
       <style>
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #111827;
-          color: #f9fafb;
+          background-color: #F9F9FF;
+          color: #111C2C;
           margin: 0;
           padding: 0;
         }
         .container {
           max-width: 560px;
           margin: 40px auto;
-          background-color: #1f2937;
+          background-color: #FFFFFF;
           border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-          border: 1px solid #374151;
+          border: 1px solid #E2E8F0;
         }
         .header {
-          background: linear-gradient(135deg, #e11d48, #be123c);
+          background: linear-gradient(135deg, #1A365D, #0F233F);
           padding: 32px 30px;
           text-align: center;
         }
@@ -68,13 +69,13 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
           line-height: 1.7;
         }
         .body p {
-          color: #d1d5db;
+          color: #4A5568;
           font-size: 15px;
           margin-bottom: 18px;
         }
         .otp-box {
-          background: linear-gradient(135deg, #111827, #1a2332);
-          border: 2px solid #e11d48;
+          background: #EDF2F7;
+          border: 2px solid #1A365D;
           border-radius: 14px;
           padding: 28px 20px;
           text-align: center;
@@ -85,39 +86,39 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 2px;
-          color: #9ca3af;
+          color: #718096;
           margin-bottom: 12px;
         }
         .otp-code {
           font-size: 52px;
           font-weight: 800;
           letter-spacing: 14px;
-          color: #f9fafb;
+          color: #111C2C;
           font-family: 'Courier New', monospace;
           text-shadow: 0 0 20px rgba(225,29,72,0.4);
         }
         .otp-expiry {
           margin-top: 12px;
           font-size: 12px;
-          color: #f87171;
+          color: #1A365D;
           font-weight: 600;
         }
         .note {
           font-size: 13px;
-          color: #9ca3af;
+          color: #718096;
           margin-top: 20px;
           padding: 14px 16px;
-          background-color: #111827;
+          background-color: #F9F9FF;
           border-radius: 8px;
-          border-left: 3px solid #374151;
+          border-left: 3px solid #F6AD55;
         }
         .footer {
-          background-color: #111827;
+          background-color: #F9F9FF;
           padding: 18px 20px;
           text-align: center;
           font-size: 12px;
-          color: #6b7280;
-          border-top: 1px solid #374151;
+          color: #718096;
+          border-top: 1px solid #E2E8F0;
         }
       </style>
     </head>
@@ -128,7 +129,7 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
           <p>Restablecimiento de contraseña</p>
         </div>
         <div class="body">
-          <p>Hola <strong style="color:#f9fafb">${nombre}</strong>,</p>
+          <p>Hola <strong style="color:#111C2C">${escaparHtml(nombre)}</strong>,</p>
           <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta. Usa el siguiente código de verificación:</p>
 
           <div class="otp-box">
@@ -137,7 +138,7 @@ export const sendPasswordResetEmail = async (to, otp, nombre) => {
             <div class="otp-expiry">⏱ Válido por 15 minutos</div>
           </div>
 
-          <p>Ingresa este código en la pantalla de recuperación de contraseña de <strong style="color:#f9fafb">Sabor Politécnico</strong> junto con tu nueva contraseña.</p>
+          <p>Ingresa este código en la pantalla de recuperación de contraseña de <strong style="color:#1A365D">Sabor Politécnico</strong> junto con tu nueva contraseña.</p>
 
           <div class="note">
             🔒 Si tú no solicitaste este cambio, puedes ignorar este correo. Tu contraseña actual permanecerá sin cambios.

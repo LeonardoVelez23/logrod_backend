@@ -1,4 +1,5 @@
 import { Empleado } from '../models/index.js';
+import { errorDeContrasenia } from '../utils/password.js';
 import bcrypt from 'bcryptjs';
 import { verificarOtp, otpLimpio } from '../services/otpService.js';
 
@@ -59,6 +60,11 @@ export const createEmpleado = async (req, res, next) => {
         success: false,
         message: 'Los campos identificacion, nombres, apellidos, correo_electronico y contrasenia son obligatorios'
         });
+    }
+
+    const errorContrasenia = errorDeContrasenia(contrasenia);
+    if (errorContrasenia) {
+        return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -138,6 +144,12 @@ export const updateEmpleado = async (req, res, next) => {
     let cambioContrasenia = {};
 
     if (contrasenia) {
+        // La política se revisa antes del OTP para no gastar un intento.
+        const errorContrasenia = errorDeContrasenia(contrasenia);
+        if (errorContrasenia) {
+            return res.status(400).json({ success: false, message: errorContrasenia });
+        }
+
         if (!otp) {
             return res.status(400).json({
                 success: false,

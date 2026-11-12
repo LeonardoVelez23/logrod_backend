@@ -1,4 +1,5 @@
 import { Cliente } from '../models/index.js';
+import { errorDeContrasenia } from '../utils/password.js';
 import bcrypt from 'bcryptjs';
 import { verificarOtp, otpLimpio } from '../services/otpService.js';
 
@@ -67,6 +68,11 @@ export const createCliente = async (req, res, next) => {
         success: false,
         message: 'tipo_cliente debe ser: Estudiante, Docente, Personal Administrativo o Persona externa'
         });
+    }
+
+    const errorContrasenia = errorDeContrasenia(contrasenia);
+    if (errorContrasenia) {
+        return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -140,6 +146,12 @@ export const updateCliente = async (req, res, next) => {
     let cambioContrasenia = {};
 
     if (contrasenia) {
+        // La política se revisa antes del OTP para no gastar un intento.
+        const errorContrasenia = errorDeContrasenia(contrasenia);
+        if (errorContrasenia) {
+            return res.status(400).json({ success: false, message: errorContrasenia });
+        }
+
         if (!otp) {
             return res.status(400).json({
                 success: false,
