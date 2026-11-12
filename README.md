@@ -54,6 +54,25 @@ APP_TIMEZONE=America/Guayaquil
 
 Ver `.env.example` para el correo (Brevo/SMTP).
 
+## Versiones y releases
+
+Al fusionar un PR de `develop` en `main`, el workflow `.github/workflows/release.yml`:
+
+1. Corre los tests contra un PostgreSQL temporal. Si fallan, no se publica nada.
+2. Calcula la versión a partir de la última etiqueta `vX.Y.Z` (la primera vez usa la de `package.json`).
+3. Crea la etiqueta anotada `vX.Y.Z` en el commit fusionado y un GitHub Release con las notas generadas a partir de los PRs.
+
+El nivel del salto se elige con etiquetas (labels) en el PR:
+
+| Label del PR | Resultado (desde v1.2.3) |
+|---|---|
+| (ninguna) | `v1.2.4` |
+| `release:minor` | `v1.3.0` |
+| `release:major` | `v2.0.0` |
+| `release:skip` | No se publica |
+
+También se puede lanzar a mano en Actions → Release → Run workflow (sobre `main`), eligiendo patch, minor o major. La versión vigente es la última etiqueta de git; el workflow no modifica `package.json` ni hace commits en `main`.
+
 ## Base de datos local (desarrollo)
 
 Para trabajar sin Supabase hay un PostgreSQL en `compose.yaml`:
