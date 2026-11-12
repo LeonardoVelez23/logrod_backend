@@ -1,410 +1,276 @@
 import { Op } from 'sequelize';
 import { Pedido, DetallePedido, Cliente, Empleado, Producto, Categoria, Pago, sequelize } from '../models/index.js';
+import { ErrorNegocio, agruparDetalles, devolverStock, reservarStock } from '../services/stockService.js';
+import { ahoraLocal } from '../utils/reloj.js';
+
+const MODALIDADES = ['presencial', 'en línea'];
+const ATRIBUTOS_CLIENTE = ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono'];
+const ATRIBUTOS_EMPLEADO = ['id', 'nombres', 'apellidos', 'cargo'];
+const ATRIBUTOS_PRODUCTO = ['id', 'codigo', 'nombre', 'precio', 'imagen_codigo'];
+
+const TRANSICIONES = {
+    'solicitado': ['confirmado', 'en preparación', 'cancelado'],
+    'confirmado': ['en preparación', 'cancelado'],
+    'en preparación': ['listo', 'cancelado'],
+    'listo': ['entregado', 'cancelado'],
+    'entregado': [],
+    'cancelado': []
+};
+const ESTADOS_CON_RESPONSABLE = ['confirmado', 'en preparación', 'listo', 'entregado'];
+
+const includeCompleto = ({ conCategoria = false } = {}) => [
+    { model: Cliente, as: 'cliente', attributes: ATRIBUTOS_CLIENTE },
+    { model: Empleado, as: 'empleadoResponsable', attributes: ATRIBUTOS_EMPLEADO },
+    { model: Empleado, as: 'empleadoPreparacion', attributes: ATRIBUTOS_EMPLEADO },
+    {
+        model: DetallePedido,
+        as: 'detalles',
+        include: {
+            model: Producto,
+            as: 'producto',
+            attributes: ATRIBUTOS_PRODUCTO,
+            ...(conCategoria && {
+                include: { model: Categoria, as: 'categoria', attributes: ['id', 'nombre'] }
+            })
+        }
+    }
+];
+
+/** Deshace la transacción y responde los errores de negocio; el resto va al errorHandler. */
+const responderError = async (t, error, res, next) => {
+    if (t && !t.finished) await t.rollback();
+    if (error instanceof ErrorNegocio) {
+        return res.status(error.status).json({ success: false, message: error.message });
+    }
+    return next(error);
+};
+
+/** null/'' → sin empleado; un id → debe existir. */
+const empleadoValido = async (id, campo, transaction) => {
+    if (id === undefined || id === null || id === '') return null;
+    const empleado = await Empleado.findByPk(id, { transaction });
+    if (!empleado) throw new ErrorNegocio(`El empleado indicado en ${campo} no existe`);
+    return empleado.id;
+};
 
 export const getAllPedidos = async (req, res, next) => {
     try {
-    const pedidos = await Pedido.findAll({
-        include: [
-        {
-            model: Cliente,
-            as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoResponsable',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoPreparacion',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: DetallePedido,
-            as: 'detalles',
-            include: {
-            model: Producto,
-            as: 'producto',
-            attributes: ['id', 'codigo', 'nombre', 'precio']
-            }
-        }
-        ],
-        order: [['createdAt', 'DESC']]
-    });
-
-    res.status(200).json({
-        success: true,
-        data: pedidos
-    });
+        const pedidos = await Pedido.findAll({
+            include: includeCompleto(),
+            order: [['createdAt', 'DESC']]
+        });
+        res.status(200).json({ success: true, data: pedidos });
     } catch (error) {
-    next(error);
+        next(error);
+    }
+};
+
+/** Pedidos del cliente autenticado (app móvil y Seguimiento de la web). */
+export const getMisPedidos = async (req, res, next) => {
+    try {
+        const pedidos = await Pedido.findAll({
+            where: { cliente_id: req.user.id },
+            include: [
+                {
+                    model: DetallePedido,
+                    as: 'detalles',
+                    include: { model: Producto, as: 'producto', attributes: ATRIBUTOS_PRODUCTO }
+                },
+                { model: Pago, as: 'pago', attributes: ['id', 'fecha', 'valor', 'metodo_pago', 'estado'] }
+            ],
+            order: [['id', 'DESC']]
+        });
+        res.status(200).json({ success: true, data: pedidos });
+    } catch (error) {
+        next(error);
     }
 };
 
 export const getPedidoById = async (req, res, next) => {
     try {
-    const { id } = req.params;
+        const pedido = await Pedido.findByPk(req.params.id, {
+            include: includeCompleto({ conCategoria: true })
+        });
 
-    const pedido = await Pedido.findByPk(id, {
-        include: [
-        {
-            model: Cliente,
-            as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoResponsable',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoPreparacion',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: DetallePedido,
-            as: 'detalles',
-            include: {
-            model: Producto,
-            as: 'producto',
-            attributes: ['id', 'codigo', 'nombre', 'precio'],
-            include: {
-                model: Categoria,
-                as: 'categoria',
-                attributes: ['id', 'nombre']
-            }
-            }
+        if (!pedido) {
+            return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
         }
-        ]
-    });
 
-    if (!pedido) {
-        return res.status(404).json({
-        success: false,
-        message: 'Pedido no encontrado'
-        });
-    }
+        // Un cliente solo puede ver sus propios pedidos.
+        if (req.user.rol === 'cliente' && pedido.cliente_id !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'No tiene permisos para ver este pedido' });
+        }
 
-    // Un cliente solo puede ver sus propios pedidos.
-    if (req.user.rol === 'cliente' && pedido.cliente_id !== req.user.id) {
-        return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para ver este pedido'
-        });
-    }
-
-    res.status(200).json({
-        success: true,
-        data: pedido
-    });
+        res.status(200).json({ success: true, data: pedido });
     } catch (error) {
-    next(error);
+        next(error);
     }
 };
 
+/**
+ * El cliente del pedido sale del token (o del cuerpo, si lo registra el
+ * personal), y la fecha y hora del reloj del servidor. El stock se descuenta
+ * con las filas de producto bloqueadas: dos pedidos simultáneos no pueden
+ * vender la misma unidad.
+ */
 export const createPedido = async (req, res, next) => {
     const t = await sequelize.transaction();
 
     try {
-    const { fecha, hora, modalidad, cliente_id, empleado_id, empleado_preparacion_id, detalles } = req.body;
+        const { modalidad, detalles } = req.body;
 
-    if (!fecha || !hora || !modalidad || !cliente_id || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
-        await t.rollback();
-        return res.status(400).json({
-        success: false,
-        message: 'fecha, hora, modalidad, cliente_id y detalles (array con al menos 1 producto) son obligatorios'
-        });
-    }
-
-    const modalidadesValidas = ['presencial', 'en línea'];
-    if (!modalidadesValidas.includes(modalidad)) {
-        await t.rollback();
-        return res.status(400).json({
-        success: false,
-        message: 'modalidad debe ser: presencial o en línea'
-        });
-    }
-
-    const cliente = await Cliente.findByPk(cliente_id, { transaction: t });
-    if (!cliente) {
-        await t.rollback();
-        return res.status(400).json({
-        success: false,
-        message: 'El cliente indicado no existe'
-        });
-    }
-
-    if (empleado_id) {
-        const empleado = await Empleado.findByPk(empleado_id, { transaction: t });
-        if (!empleado) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: 'El empleado indicado no existe'
-        });
+        if (!MODALIDADES.includes(modalidad)) {
+            throw new ErrorNegocio('modalidad debe ser: presencial o en línea');
         }
-    }
+        const cantidades = agruparDetalles(detalles);
 
-    let valorTotal = 0;
-    const detallesProcesados = [];
-
-    for (const item of detalles) {
-        if (!item.producto_id || !item.cantidad || item.cantidad < 1) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: 'Cada detalle debe tener producto_id y cantidad >= 1'
-        });
+        const esCliente = req.user.rol === 'cliente';
+        const clienteId = esCliente ? req.user.id : req.body.cliente_id;
+        if (!clienteId) {
+            throw new ErrorNegocio('cliente_id es obligatorio para registrar un pedido a nombre de un cliente');
         }
+        const cliente = await Cliente.findByPk(clienteId, { transaction: t });
+        if (!cliente) throw new ErrorNegocio('El cliente indicado no existe');
 
-        if (item.cantidad > 50) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: `Cantidad máxima por producto: 50 (producto id ${item.producto_id})`
-        });
-        }
+        // Un cliente no asigna personal a su pedido.
+        const empleadoId = esCliente ? null : await empleadoValido(req.body.empleado_id, 'empleado_id', t);
+        const empleadoPreparacionId = esCliente
+            ? null
+            : await empleadoValido(req.body.empleado_preparacion_id, 'empleado_preparacion_id', t);
 
-        const producto = await Producto.findByPk(item.producto_id, { transaction: t });
-        if (!producto) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: `El producto con id ${item.producto_id} no existe`
-        });
-        }
+        const { lineas, total } = await reservarStock(cantidades, t);
+        const { fecha, hora } = ahoraLocal();
 
-        if (producto.estado === 'no disponible') {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: `El producto "${producto.nombre}" no está disponible`
-        });
-        }
-
-        if (producto.cantidad_disponible < item.cantidad) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: `Stock insuficiente para "${producto.nombre}". Disponible: ${producto.cantidad_disponible}`
-        });
-        }
-
-        const precioUnitario = Number(producto.precio);
-        const subtotal = precioUnitario * item.cantidad;
-        valorTotal += subtotal;
-
-        detallesProcesados.push({
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: precioUnitario,
-        subtotal, producto
-        });
-    }
-
-    const pedido = await Pedido.create(
-        { fecha, hora, modalidad,
-        estado: 'solicitado',
-        valor_total: valorTotal,
-        cliente_id,
-        empleado_id: empleado_id || null,
-        empleado_preparacion_id: empleado_preparacion_id || null
-        },
-        { transaction: t }
-    );
-
-    for (const item of detallesProcesados) {
-        await DetallePedido.create(
-        {
-            pedido_id: pedido.id,
-            producto_id: item.producto_id,
-            cantidad: item.cantidad,
-            precio_unitario: item.precio_unitario,
-            subtotal: item.subtotal
-        },
-        { transaction: t }
+        const pedido = await Pedido.create(
+            {
+                fecha,
+                hora,
+                modalidad,
+                estado: 'solicitado',
+                valor_total: total,
+                cliente_id: cliente.id,
+                empleado_id: empleadoId,
+                empleado_preparacion_id: empleadoPreparacionId
+            },
+            { transaction: t }
+        );
+        await DetallePedido.bulkCreate(
+            lineas.map((linea) => ({ ...linea, pedido_id: pedido.id })),
+            { transaction: t }
         );
 
-        await item.producto.update(
-        {
-            cantidad_disponible: item.producto.cantidad_disponible - item.cantidad
-        },
-        { transaction: t }
-        );
-    }
+        await t.commit();
 
-    await t.commit();
-
-    const pedidoCreado = await Pedido.findByPk(pedido.id, {
-        include: [
-        {
-            model: Cliente,
-            as: 'cliente',
-            attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoResponsable',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: Empleado,
-            as: 'empleadoPreparacion',
-            attributes: ['id', 'nombres', 'apellidos', 'cargo']
-        },
-        {
-            model: DetallePedido,
-            as: 'detalles',
-            include: {
-            model: Producto,
-            as: 'producto',
-            attributes: ['id', 'codigo', 'nombre', 'precio']
-            }
-        }
-        ]
-    });
-
-    res.status(201).json({
-        success: true,
-        message: 'Pedido creado correctamente',
-        data: pedidoCreado
-    });
+        const pedidoCreado = await Pedido.findByPk(pedido.id, { include: includeCompleto() });
+        res.status(201).json({
+            success: true,
+            message: 'Pedido creado correctamente',
+            data: pedidoCreado
+        });
     } catch (error) {
-    await t.rollback();
-    next(error);
+        return responderError(t, error, res, next);
     }
 };
 
+/**
+ * El personal avanza estados y asigna responsables. El cliente solo puede
+ * cancelar su propio pedido mientras está solicitado. El pedido se bloquea
+ * para que dos cancelaciones simultáneas no devuelvan el stock dos veces.
+ */
 export const updatePedido = async (req, res, next) => {
     const t = await sequelize.transaction();
 
     try {
-    const { id } = req.params;
-    const { estado, empleado_id, empleado_preparacion_id, modalidad } = req.body;
+        const { id } = req.params;
+        const { estado, empleado_id, empleado_preparacion_id, modalidad } = req.body;
+        const rol = req.user?.rol?.toLowerCase();
+        const esCliente = rol === 'cliente';
 
-    const pedido = await Pedido.findByPk(id, {
-        include: [{ model: DetallePedido, as: 'detalles' }],
-        transaction: t
-    });
+        if (esCliente) {
+            const otrosCampos = Object.keys(req.body).filter((campo) => campo !== 'estado');
+            if (estado !== 'cancelado' || otrosCampos.length > 0) {
+                throw new ErrorNegocio('Un cliente solo puede cancelar su pedido', 403);
+            }
+        }
 
-    if (!pedido) {
-        await t.rollback();
-        return res.status(404).json({
-        success: false,
-        message: 'Pedido no encontrado'
-        });
-    }
+        const pedido = await Pedido.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (!pedido) throw new ErrorNegocio('Pedido no encontrado', 404);
 
-    const transiciones = {
-        'solicitado': ['confirmado', 'en preparación', 'cancelado'],
-        'confirmado': ['en preparación', 'cancelado'],
-        'en preparación': ['listo', 'cancelado'],
-        'listo': ['entregado', 'cancelado'],
-        'entregado': [],
-        'cancelado': []
-    };
+        if (esCliente) {
+            if (pedido.cliente_id !== req.user.id) {
+                throw new ErrorNegocio('No tiene permisos para modificar este pedido', 403);
+            }
+            if (pedido.estado !== 'solicitado') {
+                throw new ErrorNegocio(
+                    'Solo puedes cancelar tu pedido mientras está en estado solicitado. Para cancelarlo ahora, acércate a caja.'
+                );
+            }
+        }
 
-    if (estado) {
-        if (estado === 'cancelado' && req.user?.rol?.toLowerCase() === 'cocinero') {
-            await t.rollback();
-            return res.status(403).json({
-                success: false,
-                message: 'Los cocineros no tienen permiso para cancelar pedidos'
+        if (estado) {
+            if (estado === 'cancelado' && rol === 'cocinero') {
+                throw new ErrorNegocio('Los cocineros no tienen permiso para cancelar pedidos', 403);
+            }
+            const permitidos = TRANSICIONES[pedido.estado] || [];
+            if (!permitidos.includes(estado)) {
+                throw new ErrorNegocio(
+                    `No se puede cambiar de "${pedido.estado}" a "${estado}". Transiciones válidas: ${permitidos.join(', ') || 'ninguna (estado final)'}`
+                );
+            }
+        }
+
+        const nuevoEstado = estado ?? pedido.estado;
+        const nuevoEmpleado = empleado_id !== undefined ? empleado_id : pedido.empleado_id;
+        if (ESTADOS_CON_RESPONSABLE.includes(nuevoEstado) && !nuevoEmpleado) {
+            throw new ErrorNegocio('Debe asignar un empleado responsable para este estado del pedido');
+        }
+        if (empleado_id) await empleadoValido(empleado_id, 'empleado_id', t);
+        if (empleado_preparacion_id) {
+            await empleadoValido(empleado_preparacion_id, 'empleado_preparacion_id', t);
+        }
+        if (modalidad && !MODALIDADES.includes(modalidad)) {
+            throw new ErrorNegocio('modalidad debe ser: presencial o en línea');
+        }
+
+        if (estado === 'cancelado') {
+            const detalles = await DetallePedido.findAll({ where: { pedido_id: pedido.id }, transaction: t });
+            await devolverStock(detalles, t);
+
+            // Un pago pendiente ya no se cobrará; uno aprobado debe devolverse
+            // y deja de contar como ingreso.
+            const pago = await Pago.findOne({
+                where: { pedido_id: pedido.id },
+                lock: t.LOCK.UPDATE,
+                transaction: t
             });
+            if (pago?.estado === 'pendiente') {
+                await pago.update({ estado: 'rechazado' }, { transaction: t });
+            } else if (pago?.estado === 'aprobado') {
+                await pago.update({ estado: 'reembolsado' }, { transaction: t });
+            }
         }
 
-        const permitidos = transiciones[pedido.estado] || [];
-        if (!permitidos.includes(estado)) {
-            await t.rollback();
-            return res.status(400).json({
-                success: false,
-                message: `No se puede cambiar de "${pedido.estado}" a "${estado}". Transiciones válidas: ${permitidos.join(', ') || 'ninguna (estado final)'}`
-            });
-        }
-    }
+        await pedido.update(
+            {
+                estado: nuevoEstado,
+                empleado_id: nuevoEmpleado,
+                empleado_preparacion_id:
+                    empleado_preparacion_id !== undefined ? empleado_preparacion_id || null : pedido.empleado_preparacion_id,
+                modalidad: modalidad ?? pedido.modalidad
+            },
+            { transaction: t }
+        );
 
-    const estadosQueRequierenEmpleado = ['confirmado', 'en preparación', 'listo', 'entregado'];
-    const nuevoEstado = estado ?? pedido.estado;
-    const nuevoEmpleado = empleado_id !== undefined ? empleado_id : pedido.empleado_id;
+        await t.commit();
 
-    if (estadosQueRequierenEmpleado.includes(nuevoEstado) && !nuevoEmpleado) {
-        await t.rollback();
-        return res.status(400).json({
-        success: false,
-        message: 'Debe asignar un empleado responsable para este estado del pedido'
+        const pedidoActualizado = await Pedido.findByPk(id, { include: includeCompleto() });
+        res.status(200).json({
+            success: true,
+            message: 'Pedido actualizado correctamente',
+            data: pedidoActualizado
         });
-    }
-
-    if (empleado_id) {
-        const empleado = await Empleado.findByPk(empleado_id, { transaction: t });
-        if (!empleado) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: 'El empleado indicado no existe'
-        });
-        }
-    }
-
-    if (modalidad) {
-        const modalidadesValidas = ['presencial', 'en línea'];
-        if (!modalidadesValidas.includes(modalidad)) {
-        await t.rollback();
-        return res.status(400).json({
-            success: false,
-            message: 'modalidad debe ser: presencial o en línea'
-        });
-        }
-    }
-
-    if (estado === 'cancelado' && pedido.estado !== 'cancelado') {
-        for (const detalle of pedido.detalles) {
-        const producto = await Producto.findByPk(detalle.producto_id, { transaction: t });
-        if (producto) {
-            await producto.update({
-            cantidad_disponible: producto.cantidad_disponible + detalle.cantidad
-            }, { transaction: t });
-        }
-        }
-
-        const pago = await Pago.findOne({ where: { pedido_id: id }, transaction: t });
-        if (pago && pago.estado === 'pendiente') {
-        await pago.update({ estado: 'rechazado' }, { transaction: t });
-        }
-    }
-
-    await pedido.update({
-        estado: estado ?? pedido.estado,
-        empleado_id: empleado_id !== undefined ? empleado_id : pedido.empleado_id,
-        empleado_preparacion_id: empleado_preparacion_id !== undefined ? empleado_preparacion_id : pedido.empleado_preparacion_id,
-        modalidad: modalidad ?? pedido.modalidad
-    }, { transaction: t });
-
-    await t.commit();
-
-    const pedidoActualizado = await Pedido.findByPk(id, {
-        include: [
-        { model: Cliente, as: 'cliente', attributes: ['id', 'nombres', 'apellidos', 'identificacion', 'correo_electronico', 'telefono'] },
-        { model: Empleado, as: 'empleadoResponsable', attributes: ['id', 'nombres', 'apellidos', 'cargo'] },
-        { model: Empleado, as: 'empleadoPreparacion', attributes: ['id', 'nombres', 'apellidos', 'cargo'] },
-        {
-            model: DetallePedido,
-            as: 'detalles',
-            include: { model: Producto, as: 'producto', attributes: ['id', 'codigo', 'nombre', 'precio'] }
-        }
-        ]
-    });
-
-    res.status(200).json({
-        success: true,
-        message: 'Pedido actualizado correctamente',
-        data: pedidoActualizado
-    });
     } catch (error) {
-    await t.rollback();
-    next(error);
+        return responderError(t, error, res, next);
     }
 };
 
@@ -412,53 +278,31 @@ export const deletePedido = async (req, res, next) => {
     const t = await sequelize.transaction();
 
     try {
-    const { id } = req.params;
+        const { id } = req.params;
+        const pedido = await Pedido.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (!pedido) throw new ErrorNegocio('Pedido no encontrado', 404);
 
-    const pedido = await Pedido.findByPk(id, {
-        include: [{ model: DetallePedido, as: 'detalles' }],
-        transaction: t
-    });
-
-    if (!pedido) {
-        await t.rollback();
-        return res.status(404).json({
-        success: false,
-        message: 'Pedido no encontrado'
-        });
-    }
-
-    if (!['solicitado', 'cancelado'].includes(pedido.estado)) {
-        await t.rollback();
-        return res.status(400).json({
-        success: false,
-        message: 'Solo se pueden eliminar pedidos en estado solicitado o cancelado'
-        });
-    }
-
-    for (const detalle of pedido.detalles) {
-        const producto = await Producto.findByPk(detalle.producto_id, { transaction: t });
-        if (producto) {
-        await producto.update(
-            {
-            cantidad_disponible: producto.cantidad_disponible + detalle.cantidad
-            },
-            { transaction: t }
-        );
+        if (!['solicitado', 'cancelado'].includes(pedido.estado)) {
+            throw new ErrorNegocio('Solo se pueden eliminar pedidos en estado solicitado o cancelado');
         }
+        // El pago (rechazado o reembolsado) es parte del registro contable.
+        if (await Pago.count({ where: { pedido_id: pedido.id }, transaction: t })) {
+            throw new ErrorNegocio('No se puede eliminar un pedido que tiene un pago registrado');
         }
 
-    await DetallePedido.destroy({ where: { pedido_id: id }, transaction: t });
-    await pedido.destroy({ transaction: t });
+        const detalles = await DetallePedido.findAll({ where: { pedido_id: pedido.id }, transaction: t });
+        // Al cancelar ya se devolvió el stock.
+        if (pedido.estado !== 'cancelado') {
+            await devolverStock(detalles, t);
+        }
 
-    await t.commit();
+        await DetallePedido.destroy({ where: { pedido_id: pedido.id }, transaction: t });
+        await pedido.destroy({ transaction: t });
+        await t.commit();
 
-    res.status(200).json({
-        success: true,
-        message: 'Pedido eliminado correctamente'
-    });
+        res.status(200).json({ success: true, message: 'Pedido eliminado correctamente' });
     } catch (error) {
-    await t.rollback();
-    next(error);
+        return responderError(t, error, res, next);
     }
 };
 
@@ -579,7 +423,8 @@ export const getPedidoStats = async (req, res, next) => {
                     model: Pedido,
                     as: 'pedido',
                     attributes: [],
-                    where: pedidoWhere
+                    // Los pedidos cancelados no son ventas.
+                    where: { ...pedidoWhere, estado: { [Op.ne]: 'cancelado' } }
                 }
             ],
             group: ['producto_id', 'producto.id'],

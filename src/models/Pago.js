@@ -35,7 +35,7 @@ Pago.init({
     allowNull: true
   },
   estado: {
-    type: DataTypes.ENUM('pendiente', 'aprobado', 'rechazado'),
+    type: DataTypes.ENUM('pendiente', 'aprobado', 'rechazado', 'reembolsado'),
     allowNull: false,
     defaultValue: 'pendiente'
   }
