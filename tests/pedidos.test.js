@@ -174,8 +174,8 @@ describe('Pedidos (bloque 2)', () => {
       pedido = res.body.data;
     });
 
-    it('el cliente cancela su pedido solicitado y el stock vuelve', async () => {
-      const res = await cancelar(tokenAna, pedido.id);
+    it('el personal cancela el pedido y el stock vuelve', async () => {
+      const res = await cancelar(tokenCajero, pedido.id);
 
       expect(res.status).toBe(200);
       expect(res.body.data.estado).toBe('cancelado');
@@ -183,35 +183,23 @@ describe('Pedidos (bloque 2)', () => {
       expect(producto.cantidad_disponible).toBe(10);
     });
 
-    it('el cliente no cancela pedidos ajenos', async () => {
-      const res = await cancelar(tokenBeto, pedido.id);
-
-      expect(res.status).toBe(403);
-    });
-
-    it('el cliente no cancela un pedido ya confirmado', async () => {
-      await Pedido.update(
-        { estado: 'confirmado', empleado_id: cajero.id },
-        { where: { id: pedido.id } }
-      );
-
+    it('el cliente no puede cancelar su pedido una vez hecho', async () => {
       const res = await cancelar(tokenAna, pedido.id);
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(403);
+      const enBase = await Pedido.findByPk(pedido.id);
+      expect(enBase.estado).toBe('solicitado');
+      await producto.reload();
+      expect(producto.cantidad_disponible).toBe(6);
     });
 
-    it('el cliente no puede cambiar el pedido a otro estado ni asignar empleados', async () => {
-      const estado = await api()
+    it('el cliente no puede modificar el pedido de ninguna forma', async () => {
+      const res = await api()
         .put(`/api/v1/pedidos/${pedido.id}`)
         .set(auth(tokenAna))
-        .send({ estado: 'confirmado' });
-      expect(estado.status).toBe(403);
+        .send({ estado: 'confirmado', empleado_id: cajero.id });
 
-      const empleado = await api()
-        .put(`/api/v1/pedidos/${pedido.id}`)
-        .set(auth(tokenAna))
-        .send({ estado: 'cancelado', empleado_id: cajero.id });
-      expect(empleado.status).toBe(403);
+      expect(res.status).toBe(403);
     });
 
     it('dos cancelaciones simultáneas devuelven el stock una sola vez', async () => {
@@ -286,7 +274,7 @@ describe('Pedidos (bloque 2)', () => {
     it('los productos populares no cuentan pedidos cancelados', async () => {
       const producto = await crearProducto({ cantidad_disponible: 30 });
       const res = await pedir(tokenAna, [{ producto_id: producto.id, cantidad: 5 }]);
-      await cancelar(tokenAna, res.body.data.id);
+      await cancelar(tokenAdmin, res.body.data.id);
 
       const stats = await api().get('/api/v1/pedidos/stats').set(auth(tokenAdmin));
 

@@ -173,9 +173,10 @@ export const createPedido = async (req, res, next) => {
 };
 
 /**
- * El personal avanza estados y asigna responsables. El cliente solo puede
- * cancelar su propio pedido mientras está solicitado. El pedido se bloquea
- * para que dos cancelaciones simultáneas no devuelvan el stock dos veces.
+ * Solo el personal avanza estados, asigna responsables o cancela: una vez
+ * hecho el pedido, el cliente no puede cancelarlo (lo impide la ruta). El
+ * pedido se bloquea para que dos cancelaciones simultáneas no devuelvan el
+ * stock dos veces.
  */
 export const updatePedido = async (req, res, next) => {
     const t = await sequelize.transaction();
@@ -184,28 +185,9 @@ export const updatePedido = async (req, res, next) => {
         const { id } = req.params;
         const { estado, empleado_id, empleado_preparacion_id, modalidad } = req.body;
         const rol = req.user?.rol?.toLowerCase();
-        const esCliente = rol === 'cliente';
-
-        if (esCliente) {
-            const otrosCampos = Object.keys(req.body).filter((campo) => campo !== 'estado');
-            if (estado !== 'cancelado' || otrosCampos.length > 0) {
-                throw new ErrorNegocio('Un cliente solo puede cancelar su pedido', 403);
-            }
-        }
 
         const pedido = await Pedido.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
         if (!pedido) throw new ErrorNegocio('Pedido no encontrado', 404);
-
-        if (esCliente) {
-            if (pedido.cliente_id !== req.user.id) {
-                throw new ErrorNegocio('No tiene permisos para modificar este pedido', 403);
-            }
-            if (pedido.estado !== 'solicitado') {
-                throw new ErrorNegocio(
-                    'Solo puedes cancelar tu pedido mientras está en estado solicitado. Para cancelarlo ahora, acércate a caja.'
-                );
-            }
-        }
 
         if (estado) {
             if (estado === 'cancelado' && rol === 'cocinero') {
