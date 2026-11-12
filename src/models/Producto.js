@@ -44,9 +44,12 @@ Producto.init({
       key: 'id'
     }
   },
-  imagen_url: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  // Nombre del archivo en los assets de la app móvil, sin extensión
+  // (assets/images/productos/<imagen_codigo>.webp).
+  imagen_codigo: {
+    type: DataTypes.STRING(60),
+    allowNull: true,
+    validate: { is: /^[a-z0-9_]{1,60}$/ }
   }
 }, {
   sequelize,

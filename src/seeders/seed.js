@@ -24,7 +24,7 @@ const seed = async () => {
         cantidad_disponible: 30,
         estado: 'disponible',
         categoria_id: catEntradas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&auto=format&fit=crop'
+        imagen_codigo: 'empanadas_de_carne'
       },
       {
         codigo: 'P005',
@@ -34,7 +34,7 @@ const seed = async () => {
         cantidad_disponible: 25,
         estado: 'disponible',
         categoria_id: catEntradas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1541529086526-db283c563270?w=600&auto=format&fit=crop'
+        imagen_codigo: 'tequenos_de_queso'
       },
       {
         codigo: 'P006',
@@ -44,7 +44,7 @@ const seed = async () => {
         cantidad_disponible: 20,
         estado: 'disponible',
         categoria_id: catEntradas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=600&auto=format&fit=crop'
+        imagen_codigo: 'nachos_supremos'
       },
       {
         codigo: 'P007',
@@ -54,7 +54,7 @@ const seed = async () => {
         cantidad_disponible: 20,
         estado: 'disponible',
         categoria_id: catEntradas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&auto=format&fit=crop'
+        imagen_codigo: 'canastitas_de_verde_con_camaron'
       },
       {
         codigo: 'P008',
@@ -64,7 +64,7 @@ const seed = async () => {
         cantidad_disponible: 25,
         estado: 'disponible',
         categoria_id: catEntradas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=600&auto=format&fit=crop'
+        imagen_codigo: 'alitas_bbq_artesanales'
       },
 
       // PLATOS FUERTES
@@ -76,7 +76,7 @@ const seed = async () => {
         cantidad_disponible: 20,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop'
+        imagen_codigo: 'bandeja_paisa'
       },
       {
         codigo: 'P009',
@@ -86,7 +86,7 @@ const seed = async () => {
         cantidad_disponible: 25,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop'
+        imagen_codigo: 'lomo_saltado_criollo'
       },
       {
         codigo: 'P010',
@@ -96,7 +96,7 @@ const seed = async () => {
         cantidad_disponible: 20,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop'
+        imagen_codigo: 'churrasco_politecnico'
       },
       {
         codigo: 'P011',
@@ -106,7 +106,7 @@ const seed = async () => {
         cantidad_disponible: 18,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=600&auto=format&fit=crop'
+        imagen_codigo: 'seco_de_chivo_tradicional'
       },
       {
         codigo: 'P012',
@@ -116,7 +116,7 @@ const seed = async () => {
         cantidad_disponible: 30,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1632778149955-e80f8ceca2e8?w=600&auto=format&fit=crop'
+        imagen_codigo: 'pollo_a_la_plancha_con_champinones'
       },
       {
         codigo: 'P013',
@@ -126,7 +126,7 @@ const seed = async () => {
         cantidad_disponible: 35,
         estado: 'disponible',
         categoria_id: catPlatosFuertes.id,
-        imagen_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop'
+        imagen_codigo: 'hamburguesa_especial_sabor_poli'
       },
 
       // POSTRES
@@ -138,7 +138,7 @@ const seed = async () => {
         cantidad_disponible: 15,
         estado: 'disponible',
         categoria_id: catPostres.id,
-        imagen_url: 'https://images.unsplash.com/photo-1528975604071-b4dc52a2d18c?w=600&auto=format&fit=crop'
+        imagen_codigo: 'flan_de_caramelo_casero'
       },
       {
         codigo: 'P014',
@@ -148,7 +148,7 @@ const seed = async () => {
         cantidad_disponible: 20,
         estado: 'disponible',
         categoria_id: catPostres.id,
-        imagen_url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&auto=format&fit=crop'
+        imagen_codigo: 'cheesecake_de_frutos_rojos'
       },
       {
         codigo: 'P015',
@@ -158,7 +158,7 @@ const seed = async () => {
         cantidad_disponible: 15,
         estado: 'disponible',
         categoria_id: catPostres.id,
-        imagen_url: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&auto=format&fit=crop'
+        imagen_codigo: 'volcan_de_chocolate'
       },
       {
         codigo: 'P016',
@@ -168,7 +168,7 @@ const seed = async () => {
         cantidad_disponible: 22,
         estado: 'disponible',
         categoria_id: catPostres.id,
-        imagen_url: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&auto=format&fit=crop'
+        imagen_codigo: 'tres_leches_de_maracuya'
       },
       {
         codigo: 'P017',
@@ -178,7 +178,7 @@ const seed = async () => {
         cantidad_disponible: 30,
         estado: 'disponible',
         categoria_id: catPostres.id,
-        imagen_url: 'https://images.unsplash.com/photo-1560008511-11c63416e52d?w=600&auto=format&fit=crop'
+        imagen_codigo: 'helado_artesanal_de_paila'
       },
 
       // BEBIDAS
@@ -190,7 +190,7 @@ const seed = async () => {
         cantidad_disponible: 50,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop'
+        imagen_codigo: 'limonada_de_coco_frappe'
       },
       {
         codigo: 'P018',
@@ -200,7 +200,7 @@ const seed = async () => {
         cantidad_disponible: 40,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop'
+        imagen_codigo: 'jugo_natural_de_maracuya'
       },
       {
         codigo: 'P019',
@@ -210,7 +210,7 @@ const seed = async () => {
         cantidad_disponible: 35,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop'
+        imagen_codigo: 'chicha_morada_tradicional'
       },
       {
         codigo: 'P020',
@@ -220,7 +220,7 @@ const seed = async () => {
         cantidad_disponible: 30,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=600&auto=format&fit=crop'
+        imagen_codigo: 'cerveza_artesanal_poli_ipa'
       },
       {
         codigo: 'P021',
@@ -230,7 +230,7 @@ const seed = async () => {
         cantidad_disponible: 60,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop'
+        imagen_codigo: 'cafe_espresso_doble'
       },
       {
         codigo: 'P022',
@@ -240,7 +240,7 @@ const seed = async () => {
         cantidad_disponible: 45,
         estado: 'disponible',
         categoria_id: catBebidas.id,
-        imagen_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&auto=format&fit=crop'
+        imagen_codigo: 'te_helado_de_durazno'
       }
     ];
 
@@ -251,7 +251,7 @@ const seed = async () => {
       });
 
       if (!created) {
-        // Actualizar datos e imagen por si ya existía el registro simple anterior
+        // Actualizar datos e imagen_codigo por si ya existía el registro
         await prod.update(prodData);
       }
     }

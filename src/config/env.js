@@ -17,12 +17,6 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET,
   // Límite de peticiones en /auth. Solo se desactiva en los tests.
   rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
-  s3Endpoint: process.env.S3_ENDPOINT,
-  s3Region: process.env.S3_REGION,
-  s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
-  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-  s3Bucket: process.env.S3_BUCKET || 'productos',
-  supabaseUrl: process.env.SUPABASE_URL,
   brevoApiKey: process.env.BREVO_API_KEY || '',
   smtpHost: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
   smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),

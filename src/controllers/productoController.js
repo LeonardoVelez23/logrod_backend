@@ -1,8 +1,18 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Producto, Categoria } from '../models/index.js';
-import s3Client from '../config/s3Storage.js';
-import { config } from '../config/env.js';
-import { MIME_A_EXTENSION } from '../middlewares/uploadMiddleware.js';
+
+// Las imágenes están en los assets de la app móvil: solo se guarda el nombre
+// del archivo, sin extensión (assets/images/productos/<imagen_codigo>.webp).
+const IMAGEN_CODIGO_REGEX = /^[a-z0-9_]{1,60}$/;
+const MENSAJE_IMAGEN_CODIGO =
+    'imagen_codigo solo admite minúsculas, números y guion bajo (máx. 60), p. ej. bandeja_paisa';
+
+/** undefined = no se envió; '' o null = quitar la imagen; texto = código. */
+const leerImagenCodigo = (valor) => {
+    if (valor === undefined) return { valor: undefined };
+    if (valor === null || String(valor).trim() === '') return { valor: null };
+    const codigo = String(valor).trim();
+    return IMAGEN_CODIGO_REGEX.test(codigo) ? { valor: codigo } : { error: MENSAJE_IMAGEN_CODIGO };
+};
 
 export const getAllProductos = async (req, res, next) => {
     try {
@@ -55,6 +65,7 @@ export const getProductoById = async (req, res, next) => {
 export const createProducto = async (req, res, next) => {
     try {
     const { codigo, nombre, descripcion, precio, cantidad_disponible, estado, categoria_id } = req.body;
+    const imagen = leerImagenCodigo(req.body.imagen_codigo);
 
     if (!codigo || !nombre || precio === undefined || !categoria_id) {
         return res.status(400).json({
@@ -74,6 +85,13 @@ export const createProducto = async (req, res, next) => {
         return res.status(400).json({
         success: false,
         message: 'La cantidad disponible no puede ser negativa'
+        });
+    }
+
+    if (imagen.error) {
+        return res.status(400).json({
+        success: false,
+        message: imagen.error
         });
     }
 
@@ -99,7 +117,8 @@ export const createProducto = async (req, res, next) => {
         precio,
         cantidad_disponible: cantidad_disponible ?? 0,
         estado: estado || 'disponible',
-        categoria_id
+        categoria_id,
+        imagen_codigo: imagen.valor ?? null
     });
 
     const productoCreado = await Producto.findByPk(producto.id, {
@@ -130,6 +149,7 @@ export const updateProducto = async (req, res, next) => {
     try {
     const { id } = req.params;
     const { codigo, nombre, descripcion, precio, cantidad_disponible, estado, categoria_id } = req.body;
+    const imagen = leerImagenCodigo(req.body.imagen_codigo);
 
     const producto = await Producto.findByPk(id);
 
@@ -151,6 +171,13 @@ export const updateProducto = async (req, res, next) => {
         return res.status(400).json({
         success: false,
         message: 'La cantidad disponible no puede ser negativa'
+        });
+    }
+
+    if (imagen.error) {
+        return res.status(400).json({
+        success: false,
+        message: imagen.error
         });
     }
 
@@ -178,7 +205,8 @@ export const updateProducto = async (req, res, next) => {
         precio: precio ?? producto.precio,
         cantidad_disponible: cantidad_disponible ?? producto.cantidad_disponible,
         estado: estado ?? producto.estado,
-        categoria_id: categoria_id ?? producto.categoria_id
+        categoria_id: categoria_id ?? producto.categoria_id,
+        imagen_codigo: imagen.valor !== undefined ? imagen.valor : producto.imagen_codigo
     });
 
     const productoActualizado = await Producto.findByPk(id, {
@@ -201,70 +229,6 @@ export const updateProducto = async (req, res, next) => {
         message: 'Ya existe un producto con ese código'
         });
     }
-    next(error);
-    }
-};
-
-export const uploadImagenProducto = async (req, res, next) => {
-    try {
-    const { id } = req.params;
-
-    if (!s3Client) {
-        return res.status(500).json({
-        success: false,
-        message: 'La subida de imágenes no está configurada en el servidor (faltan credenciales S3 de Supabase Storage)'
-        });
-    }
-
-    if (!req.file) {
-        return res.status(400).json({
-        success: false,
-        message: 'Debe adjuntar un archivo de imagen (campo "imagen")'
-        });
-    }
-
-    const producto = await Producto.findByPk(id);
-    if (!producto) {
-        return res.status(404).json({
-        success: false,
-        message: 'Producto no encontrado'
-        });
-    }
-
-    const extension = MIME_A_EXTENSION[req.file.mimetype] || 'bin';
-    const rutaArchivo = `productos/${producto.id}-${Date.now()}.${extension}`;
-
-    try {
-        await s3Client.send(new PutObjectCommand({
-        Bucket: config.s3Bucket,
-        Key: rutaArchivo,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype
-        }));
-    } catch (uploadError) {
-        return res.status(500).json({
-        success: false,
-        message: 'Error al subir la imagen a Supabase Storage: ' + uploadError.message
-        });
-    }
-
-    const imagenUrl = `${config.supabaseUrl}/storage/v1/object/public/${config.s3Bucket}/${rutaArchivo}`;
-    await producto.update({ imagen_url: imagenUrl });
-
-    const productoActualizado = await Producto.findByPk(id, {
-        include: {
-        model: Categoria,
-        as: 'categoria',
-        attributes: ['id', 'nombre']
-        }
-    });
-
-    res.status(200).json({
-        success: true,
-        message: 'Imagen subida correctamente',
-        data: productoActualizado
-    });
-    } catch (error) {
     next(error);
     }
 };
