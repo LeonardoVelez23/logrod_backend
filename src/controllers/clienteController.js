@@ -1,5 +1,7 @@
 import { Cliente } from '../models/index.js';
+import { errorDeContrasenia } from '../utils/password.js';
 import bcrypt from 'bcryptjs';
+import { verificarOtp, otpLimpio } from '../services/otpService.js';
 
 export const getAllClientes = async (req, res, next) => {
     try {
@@ -20,6 +22,14 @@ export const getAllClientes = async (req, res, next) => {
 export const getClienteById = async (req, res, next) => {
     try {
     const { id } = req.params;
+
+    // Un cliente solo puede ver su propio perfil.
+    if (req.user.rol === 'cliente' && String(req.user.id) !== String(id)) {
+        return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver este perfil'
+        });
+    }
 
     const cliente = await Cliente.findByPk(id, {
         attributes: { exclude: ['contrasenia'] }
@@ -58,6 +68,11 @@ export const createCliente = async (req, res, next) => {
         success: false,
         message: 'tipo_cliente debe ser: Estudiante, Docente, Personal Administrativo o Persona externa'
         });
+    }
+
+    const errorContrasenia = errorDeContrasenia(contrasenia);
+    if (errorContrasenia) {
+        return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -128,41 +143,35 @@ export const updateCliente = async (req, res, next) => {
         }
     }
 
-    let contraseniaUpdate = cliente.contrasenia;
-    let resetTokenUpdate = cliente.reset_password_token;
-    let resetExpiresUpdate = cliente.reset_password_expires;
+    let cambioContrasenia = {};
 
     if (contrasenia) {
-        const isAdmin = req.user && req.user.rol === 'admin';
+        // La política se revisa antes del OTP para no gastar un intento.
+        const errorContrasenia = errorDeContrasenia(contrasenia);
+        if (errorContrasenia) {
+            return res.status(400).json({ success: false, message: errorContrasenia });
+        }
 
-        if (!isAdmin) {
-            if (!otp) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
-                });
-            }
+        // El administrador cambia la contraseña de otro usuario sin OTP; quien
+        // cambia la suya propia necesita el código enviado a su correo.
+        const cambioPorAdmin = req.user.rol === 'admin';
 
-            const cleanOtp = String(otp).trim();
-            const now = new Date();
+        if (!cambioPorAdmin && !otp) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
+            });
+        }
 
-            if (
-                !cliente.reset_password_token ||
-                String(cliente.reset_password_token).trim() !== cleanOtp ||
-                !cliente.reset_password_expires ||
-                new Date(cliente.reset_password_expires) <= now
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
-                });
-            }
+        if (!cambioPorAdmin && !(await verificarOtp(cliente, otp))) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'
+            });
         }
 
         const salt = await bcrypt.genSalt(10);
-        contraseniaUpdate = await bcrypt.hash(contrasenia, salt);
-        resetTokenUpdate = null;
-        resetExpiresUpdate = null;
+        cambioContrasenia = { contrasenia: await bcrypt.hash(contrasenia, salt), ...otpLimpio };
     }
 
     await cliente.update({
@@ -172,9 +181,7 @@ export const updateCliente = async (req, res, next) => {
         correo_electronico: correo_electronico?.trim().toLowerCase() ?? cliente.correo_electronico,
         telefono: telefono !== undefined ? (telefono?.trim() || null) : cliente.telefono,
         tipo_cliente: tipo_cliente ?? cliente.tipo_cliente,
-        contrasenia: contraseniaUpdate,
-        reset_password_token: resetTokenUpdate,
-        reset_password_expires: resetExpiresUpdate
+        ...cambioContrasenia
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();

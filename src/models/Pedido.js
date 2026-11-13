@@ -1,4 +1,5 @@
 import { Model, DataTypes } from 'sequelize';
+import { comoNumero } from './decimal.js';
 import sequelize from '../config/database.js';
 
 class Pedido extends Model {}
@@ -28,6 +29,10 @@ Pedido.init({
   },
   valor_total: {
     type: DataTypes.DECIMAL(10, 2),
+    // Postgres devuelve NUMERIC como texto ("6.00"); la API envía número.
+    get() {
+      return comoNumero(this.getDataValue('valor_total'));
+    },
     allowNull: false,
     defaultValue: 0.00
   },

@@ -1,0 +1,133 @@
+name: Release
+
+# Crea la etiqueta vX.Y.Z y el GitHub Release cuando se fusiona un PR de
+# develop en main (o a mano desde la pestaña Actions, sobre main).
+#
+# La versión sale de la última etiqueta v*.*.*; la primera vez, de
+# package.json. Nivel del salto según las etiquetas (labels) del PR:
+#   release:major → X+1.0.0   release:minor → X.Y+1.0
+#   release:skip  → no publica   (sin etiqueta) → X.Y.Z+1
+# No se escribe nada en main: la etiqueta de git es la fuente de la versión.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Nivel del salto de versión
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Tests
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.ref == 'develop' &&
+       !contains(github.event.pull_request.labels.*.name, 'release:skip'))
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: logrod
+          POSTGRES_PASSWORD: logrod
+          POSTGRES_DB: logrod_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U logrod -d logrod_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tests
+        run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://logrod:logrod@localhost:5432/logrod_test
+
+  release:
+    name: Etiqueta y release
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Calcular versión
+        id: version
+        env:
+          BUMP_MANUAL: ${{ inputs.bump }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          if [ -n "$BUMP_MANUAL" ]; then
+            BUMP="$BUMP_MANUAL"
+          elif echo "$LABELS" | grep -q '"release:major"'; then
+            BUMP=major
+          elif echo "$LABELS" | grep -q '"release:minor"'; then
+            BUMP=minor
+          else
+            BUMP=patch
+          fi
+
+          ULTIMA=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          if [ -z "$ULTIMA" ]; then
+            # Primera release: la versión de package.json tal cual.
+            NUEVA=$(node -p "require('./package.json').version")
+          else
+            IFS=. read -r MAJOR MINOR PATCH <<< "${ULTIMA#v}"
+            case "$BUMP" in
+              major) NUEVA="$((MAJOR + 1)).0.0" ;;
+              minor) NUEVA="${MAJOR}.$((MINOR + 1)).0" ;;
+              *)     NUEVA="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+            esac
+          fi
+
+          if git rev-parse -q --verify "refs/tags/v$NUEVA" > /dev/null; then
+            echo "::error::La etiqueta v$NUEVA ya existe"
+            exit 1
+          fi
+
+          echo "Última etiqueta: ${ULTIMA:-ninguna} · salto: $BUMP · nueva: v$NUEVA"
+          echo "tag=v$NUEVA" >> "$GITHUB_OUTPUT"
+
+      - name: Crear y subir la etiqueta
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Crear GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true

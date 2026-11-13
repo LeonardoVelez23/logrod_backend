@@ -1,7 +1,22 @@
 import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-class Empleado extends Model {}
+// Campos que nunca deben salir en una respuesta JSON: la contraseña y el OTP
+// de recuperación (con el OTP cualquiera podría cambiar la contraseña).
+const CAMPOS_PRIVADOS = [
+  'contrasenia',
+  'reset_password_token',
+  'reset_password_expires',
+  'reset_password_attempts'
+];
+
+class Empleado extends Model {
+  toJSON() {
+    const values = { ...this.get() };
+    for (const campo of CAMPOS_PRIVADOS) delete values[campo];
+    return values;
+  }
+}
 
 Empleado.init({
   id: {
@@ -53,6 +68,12 @@ Empleado.init({
   reset_password_expires: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  // Intentos fallidos con el OTP vigente (máximo OTP_MAX_ATTEMPTS).
+  reset_password_attempts: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   sequelize,

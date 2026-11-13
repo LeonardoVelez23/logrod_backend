@@ -2,11 +2,15 @@ import { Cliente, Empleado } from '../models/index.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
-import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { config } from '../config/env.js';
+import { emitirOtp, verificarOtp, otpLimpio } from '../services/otpService.js';
+import { errorDeContrasenia } from '../utils/password.js';
+import { rolDeCargo } from '../utils/roles.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_resto_logrod_2026';
+const buscarPorCorreo = async (correo) =>
+  (await Cliente.findOne({ where: { correo_electronico: correo } })) ??
+  (await Empleado.findOne({ where: { correo_electronico: correo } }));
 
 export const login = async (req, res, next) => {
   try {
@@ -41,18 +45,7 @@ export const login = async (req, res, next) => {
       });
       
       if (user) {
-        const cargo = user.cargo?.toLowerCase() || '';
-        if (cargo === 'admin' || cargo === 'administrador') {
-          role = 'admin';
-        } else if (cargo === 'mesero') {
-          role = 'mesero';
-        } else if (cargo === 'cajero') {
-          role = 'cajero';
-        } else if (cargo === 'cocinero') {
-          role = 'cocinero';
-        } else {
-          role = 'empleado';
-        }
+        role = rolDeCargo(user.cargo);
       }
     }
 
@@ -80,7 +73,7 @@ export const login = async (req, res, next) => {
         correo_electronico: user.correo_electronico,
         rol: role
       },
-      JWT_SECRET,
+      config.jwtSecret,
       { expiresIn: '8h' }
     );
 
@@ -117,36 +110,19 @@ export const forgotPassword = async (req, res, next) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Buscar en Clientes y luego en Empleados
-    let user = await Cliente.findOne({ where: { correo_electronico: cleanEmail } });
+    const user = await buscarPorCorreo(cleanEmail);
 
+    // Por seguridad (RNF-06), responder lo mismo exista o no el correo:
+    // un 404 permitiría averiguar qué correos tienen cuenta.
     if (!user) {
-      user = await Empleado.findOne({ where: { correo_electronico: cleanEmail } });
-    }
-
-    // Validar si el usuario/correo existe en el sistema
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'El correo electrónico ingresado no se encuentra registrado en el sistema.'
+      return res.status(200).json({
+        success: true,
+        message: 'Si el correo está registrado, recibirás el código de verificación.'
       });
     }
 
-    // Si ya existe un OTP válido y no ha expirado, reutilizarlo (evitar sobrescribir)
-    let otp = user.reset_password_token;
-    let otpExpires = user.reset_password_expires;
-    const now = new Date();
-
-    if (!otp || !otpExpires || otpExpires <= now) {
-      // Generar nuevo OTP de 6 dígitos solo si no hay uno vigente
-      otp = Math.floor(100000 + Math.random() * 900000).toString();
-      otpExpires = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutos
-
-      await user.update({
-        reset_password_token: otp,
-        reset_password_expires: otpExpires
-      });
-    }
+    // Cada solicitud genera un código nuevo e invalida el anterior.
+    const otp = await emitirOtp(user);
 
     if (config.nodeEnv === 'development') {
       console.log('\n=================================================');
@@ -154,15 +130,13 @@ export const forgotPassword = async (req, res, next) => {
       console.log('=================================================\n');
     }
 
-    // Enviar correo con el OTP (nuevo o reutilizado)
+    // Enviar correo con el OTP. Si falla, se registra y se responde igual
+    // que para un correo no registrado: un error distinto revelaría que la
+    // cuenta existe (RNF-06).
     try {
       await sendPasswordResetEmail(user.correo_electronico, otp, `${user.nombres} ${user.apellidos}`);
     } catch (emailError) {
       console.error('Error enviando OTP de recuperación:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: 'No se pudo enviar el código de verificación. Inténtalo de nuevo más tarde.'
-      });
     }
 
     res.status(200).json({
@@ -188,44 +162,16 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Validar fortaleza de la contraseña
-    if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos una letra mayúscula.' });
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un número.' });
-    }
-    if (!/[^A-Za-z0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe incluir al menos un carácter especial.' });
+    const errorContrasenia = errorDeContrasenia(newPassword);
+    if (errorContrasenia) {
+      return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanOtp = otp.trim();
 
-    // Buscar en Clientes por email + OTP válido
-    let user = await Cliente.findOne({
-      where: {
-        correo_electronico: cleanEmail,
-        reset_password_token: cleanOtp,
-        reset_password_expires: { [Op.gt]: new Date() }
-      }
-    });
+    const user = await buscarPorCorreo(cleanEmail);
 
-    // Buscar en Empleados si no se encontró en Clientes
-    if (!user) {
-      user = await Empleado.findOne({
-        where: {
-          correo_electronico: cleanEmail,
-          reset_password_token: cleanOtp,
-          reset_password_expires: { [Op.gt]: new Date() }
-        }
-      });
-    }
-
-    if (!user) {
+    if (!user || !(await verificarOtp(user, otp))) {
       return res.status(400).json({
         success: false,
         message: 'El código ingresado es incorrecto o ha expirado. Solicita uno nuevo.'
@@ -237,11 +183,7 @@ export const resetPassword = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     // Actualizar contraseña y limpiar OTP
-    await user.update({
-      contrasenia: hashedPassword,
-      reset_password_token: null,
-      reset_password_expires: null
-    });
+    await user.update({ contrasenia: hashedPassword, ...otpLimpio });
 
     res.status(200).json({
       success: true,
