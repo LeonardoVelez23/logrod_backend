@@ -150,14 +150,18 @@ export const updateEmpleado = async (req, res, next) => {
             return res.status(400).json({ success: false, message: errorContrasenia });
         }
 
-        if (!otp) {
+        // El administrador cambia la contraseña de otro usuario sin OTP; quien
+        // cambia la suya propia necesita el código enviado a su correo.
+        const cambioPorAdmin = req.user.rol === 'admin' && req.user.id !== empleado.id;
+
+        if (!cambioPorAdmin && !otp) {
             return res.status(400).json({
                 success: false,
                 message: 'Se requiere el código OTP de verificación para cambiar la contraseña.'
             });
         }
 
-        if (!(await verificarOtp(empleado, otp))) {
+        if (!cambioPorAdmin && !(await verificarOtp(empleado, otp))) {
             return res.status(400).json({
                 success: false,
                 message: 'El código OTP es incorrecto o ha expirado. Solicita uno nuevo.'

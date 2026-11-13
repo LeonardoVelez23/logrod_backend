@@ -55,7 +55,20 @@ const empleadoValido = async (id, campo, transaction) => {
 
 export const getAllPedidos = async (req, res, next) => {
     try {
+        // El cliente solo ve los suyos; el personal puede filtrar con ?cliente_id=.
+        const where = {};
+        if (req.user.rol === 'cliente') {
+            where.cliente_id = req.user.id;
+        } else if (req.query.cliente_id !== undefined) {
+            const clienteId = Number(req.query.cliente_id);
+            if (!Number.isInteger(clienteId) || clienteId <= 0) {
+                return res.status(400).json({ success: false, message: 'cliente_id inválido' });
+            }
+            where.cliente_id = clienteId;
+        }
+
         const pedidos = await Pedido.findAll({
+            where,
             include: includeCompleto(),
             order: [['createdAt', 'DESC']]
         });

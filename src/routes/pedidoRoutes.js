@@ -8,7 +8,7 @@ router.use(verifyToken);
 
 router.get('/stats', restrictTo('admin', 'empleado', 'cajero'), getPedidoStats);
 router.get('/mios', restrictTo('cliente'), getMisPedidos);
-router.get('/', restrictTo('admin', 'empleado', 'cajero', 'cocinero', 'mesero'), getAllPedidos);
+router.get('/', restrictTo('cliente', 'admin', 'empleado', 'cajero', 'cocinero', 'mesero'), getAllPedidos);
 router.get('/:id', getPedidoById);
 router.post('/', restrictTo('cliente', 'admin', 'empleado', 'cajero', 'mesero'), createPedido);
 // Una vez hecho el pedido, el cliente no puede cancelarlo ni modificarlo.
