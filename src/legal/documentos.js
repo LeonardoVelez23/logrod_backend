@@ -52,6 +52,8 @@ const terminos = {
       titulo: '4. Pagos',
       parrafos: [
         'El pago se registra por pedido con los métodos habilitados por el restaurante (efectivo, tarjeta o transferencia).',
+        'El pago con tarjeta desde la aplicación lo procesa Payphone en su propia página: los datos de la tarjeta se escriben allí y la plataforma solo recibe el resultado y el número de la transacción. Se puede pagar desde que se hace el pedido.',
+        'Si el restaurante cancela un pedido ya pagado con tarjeta, el pago se marca como reembolsado y el restaurante gestiona la devolución por el mismo medio.',
         'La plataforma no guarda números de tarjeta ni códigos de seguridad.'
       ]
     },
@@ -126,7 +128,7 @@ const privacidad = {
       titulo: '5. Con quién los compartimos',
       parrafos: [
         'El personal del restaurante accede solo a los datos que necesita para atender tu pedido.',
-        'Usamos proveedores que actúan como encargados del tratamiento: alojamiento de la base de datos y del servidor, y envío de correos. Algunos están fuera del Ecuador, por lo que puede haber transferencia internacional de datos, con las garantías que exige la LOPDP.',
+        'Usamos proveedores que actúan como encargados del tratamiento: alojamiento de la base de datos y del servidor, envío de correos y procesamiento de pagos con tarjeta (Payphone, que recibe directamente los datos de la tarjeta que escribes en su página). Algunos están fuera del Ecuador, por lo que puede haber transferencia internacional de datos, con las garantías que exige la LOPDP.',
         'Solo entregamos datos a autoridades cuando una norma o una orden competente lo exige.'
       ]
     },

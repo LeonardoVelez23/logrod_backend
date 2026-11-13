@@ -7,6 +7,7 @@ import Pedido from './Pedido.js';
 import DetallePedido from './DetallePedido.js';
 import Pago from './Pago.js';
 import FotoPerfil from './FotoPerfil.js';
+import TransaccionPayphone from './TransaccionPayphone.js';
 
 // --- Asociaciones ---
 
@@ -56,6 +57,10 @@ Pago.belongsTo(Pedido, { foreignKey: 'pedido_id', as: 'pedido' });
 Cliente.hasOne(FotoPerfil, { foreignKey: 'cliente_id', as: 'foto', onDelete: 'CASCADE' });
 FotoPerfil.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente' });
 
+// Pedido <-> TransaccionPayphone (intentos de pago con tarjeta, RF-22)
+Pedido.hasMany(TransaccionPayphone, { foreignKey: 'pedido_id', as: 'transaccionesPayphone', onDelete: 'CASCADE' });
+TransaccionPayphone.belongsTo(Pedido, { foreignKey: 'pedido_id', as: 'pedido' });
+
 // Exportar todos los modelos y la conexión
 export {
   sequelize,
@@ -66,5 +71,6 @@ export {
   Pedido,
   DetallePedido,
   Pago,
-  FotoPerfil
+  FotoPerfil,
+  TransaccionPayphone
 };

@@ -176,6 +176,25 @@ DELETE /api/v1/perfil/foto
 
 La foto se guarda en la tabla `FotosPerfil` (una por cliente, con RLS), se incluye en `GET /privacidad/mis-datos` y se borra al eliminar la cuenta. El tipo se detecta por los bytes, no por lo que diga el cliente.
 
+### Pago con tarjeta por Payphone (RF-22)
+
+Flujo (botón de pago por redirección de Payphone, ambiente de **pruebas**: no hay cobros reales):
+
+1. La app llama `POST /api/v1/pagos/payphone/preparar` `{pedido_id}` (solo cliente, pedido propio no cancelado y sin pago cerrado; se puede pagar desde que está `solicitado`). Responde `{url}`: el formulario de tarjeta de Payphone, que vence a los 10 minutos.
+2. La app abre `url` en una pestaña del navegador (Custom Tabs / SFSafariViewController; Payphone no permite webviews).
+3. Payphone devuelve al navegador a `GET /pagos/payphone/retorno?id=&clientTransactionId=` (fuera de `/api/v1`). El backend confirma con Payphone (`/api/button/V2/Confirm`, antes de 5 minutos o Payphone lo revierte), verifica el monto y registra el `Pago` como `aprobado` (`tarjeta`, referencia `Payphone <id>`). Si el pedido se canceló mientras pagaba, queda `reembolsado`.
+4. La página tiene el botón "Volver a la app" (`saborpolitecnico://app/pedidos/<id>`).
+
+Configuración (`.env`): `PAYPHONE_TOKEN`, `PAYPHONE_STORE_ID` y `PAYPHONE_RESPONSE_URL` (ver `.env.example`). Sin ellos `preparar` responde 503.
+
+En Payphone Developer: aplicación **WEB** en ambiente **PRUEBAS**, con el dominio público del backend y la URL de respuesta `<dominio>/pagos/payphone/retorno`. En desarrollo el backend local se expone con ngrok:
+
+```bash
+ngrok http --url=<tu-dominio>.ngrok-free.app 3000
+```
+
+Los intentos se guardan en `TransaccionesPayphone` (sin datos de la tarjeta ni del titular).
+
 ### Páginas públicas (para Google Play y App Store)
 
 ```http
