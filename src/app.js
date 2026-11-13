@@ -5,6 +5,7 @@ import morgan from 'morgan';
 
 import { config } from './config/env.js';
 import routes from './routes/index.js';
+import paginasLegales from './routes/paginasLegales.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { opcionesCors } from './config/cors.js';
@@ -32,6 +33,10 @@ if (config.nodeEnv === 'development') {
 
 // Rutas base de la API
 app.use('/api/v1', routes);
+
+// Páginas públicas (HTML) de términos, privacidad y eliminación de cuenta:
+// las tiendas de apps piden una URL que abra en el navegador.
+app.use('/legal', paginasLegales);
 
 // Middleware para rutas no encontradas (404)
 app.use(notFoundHandler);

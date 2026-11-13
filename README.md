@@ -155,6 +155,25 @@ Públicos, en JSON (`{tipo, titulo, version, secciones: [{titulo, parrafos}]}`);
 
 El registro (`POST /clientes` sin token de personal) exige `acepta_terminos: true` y `version_legal` igual a la vigente, y guarda `legal_version` y `legal_aceptado_en` en el cliente. Los clientes que crea el personal desde el panel no la llevan.
 
+### Privacidad del cliente
+
+```http
+GET    /api/v1/privacidad/mis-datos   # (cliente) sus datos, aceptación legal y pedidos, para descargar
+DELETE /api/v1/privacidad/mi-cuenta   # (cliente) body {contrasenia}: elimina su cuenta
+```
+
+Eliminar la cuenta reemplaza identificación, nombres, correo, teléfono y contraseña, y marca `eliminado_en`; los pedidos y pagos se conservan anónimos. No se permite con pedidos en curso. El token deja de servir en la siguiente petición.
+
+### Páginas públicas (para Google Play y App Store)
+
+```http
+GET /legal/terminos
+GET /legal/privacidad        # URL de la política de privacidad en las tiendas
+GET /legal/eliminar-cuenta   # enlace web para pedir la eliminación (Google Play)
+```
+
+HTML con los colores de marca, generado con los mismos textos de `src/legal/documentos.js`. Van fuera de `/api/v1`.
+
 ## Estructura del proyecto
 
 ```text

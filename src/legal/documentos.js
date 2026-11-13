@@ -13,7 +13,7 @@
  */
 export const VERSION_LEGAL = '2026-11-13';
 
-const RESPONSABLE = {
+export const RESPONSABLE = {
   nombre: 'Sabor Politécnico, restaurante universitario',
   razonSocial: '[Razón social y RUC del responsable]',
   direccion: '[Dirección del restaurante]',
@@ -132,7 +132,7 @@ const privacidad = {
     {
       titulo: '6. Cuánto tiempo los conservamos',
       parrafos: [
-        'Mientras tu cuenta esté activa. Si pides eliminarla, borraremos o anonimizaremos tus datos, salvo los registros de pedidos y pagos que la ley obligue a conservar, por el plazo que esta establezca.'
+        'Mientras tu cuenta esté activa. Cuando eliminas tu cuenta borramos tus datos personales (identificación, nombres, correo y teléfono); los pedidos y pagos quedan sin datos que te identifiquen, porque la ley obliga a conservar los registros contables por el plazo que establece.'
       ]
     },
     {
@@ -140,7 +140,7 @@ const privacidad = {
       parrafos: [
         'Puedes ejercer tus derechos de acceso, rectificación y actualización, eliminación, oposición, portabilidad y suspensión del tratamiento, y a no ser objeto de decisiones basadas únicamente en tratamientos automatizados.',
         `Escríbenos a ${RESPONSABLE.correo} desde el correo de tu cuenta indicando el derecho que quieres ejercer. Responderemos en el plazo que establece la LOPDP.`,
-        'Puedes actualizar tus datos de contacto desde tu perfil en la aplicación.',
+        'Desde la aplicación, en Perfil → Privacidad y datos, puedes ver y descargar los datos que guardamos de ti (acceso y portabilidad) y eliminar tu cuenta en cualquier momento. Si ya no tienes la aplicación, escríbenos para eliminarla.',
         'Si consideras que no atendimos tu solicitud, puedes acudir a la Superintendencia de Protección de Datos Personales.'
       ]
     },
@@ -166,3 +166,36 @@ const privacidad = {
 };
 
 export const DOCUMENTOS_LEGALES = { terminos, privacidad };
+
+/**
+ * Página pública para pedir la eliminación de la cuenta (Google Play exige
+ * un enlace web además de la opción dentro de la app). No forma parte de lo
+ * que se acepta al registrarse.
+ */
+export const ELIMINAR_CUENTA = {
+  tipo: 'eliminar-cuenta',
+  titulo: 'Eliminar tu cuenta de Sabor Politécnico',
+  version: VERSION_LEGAL,
+  secciones: [
+    {
+      titulo: 'Desde la aplicación',
+      parrafos: [
+        'Inicia sesión y entra a Perfil → Privacidad y datos → Eliminar mi cuenta. Confirma con tu contraseña. La eliminación es inmediata y no se puede deshacer.',
+        'Si tienes un pedido en curso, espera a que se entregue o se cancele antes de eliminar la cuenta.'
+      ]
+    },
+    {
+      titulo: 'Sin la aplicación',
+      parrafos: [
+        `Escribe a ${RESPONSABLE.correo} desde el correo registrado en tu cuenta, con el asunto "Eliminar mi cuenta". La eliminaremos y te confirmaremos por correo.`
+      ]
+    },
+    {
+      titulo: 'Qué se elimina y qué se conserva',
+      parrafos: [
+        'Se eliminan tu identificación, nombres, apellidos, correo electrónico, teléfono y contraseña. Ya no podrás iniciar sesión con esa cuenta.',
+        'Los pedidos y pagos se conservan sin datos que te identifiquen, por las obligaciones contables y tributarias del restaurante.'
+      ]
+    }
+  ]
+};

@@ -7,6 +7,7 @@ import { VERSION_LEGAL } from '../legal/documentos.js';
 export const getAllClientes = async (req, res, next) => {
     try {
     const clientes = await Cliente.findAll({
+        where: { eliminado_en: null },
         attributes: { exclude: ['contrasenia'] },
         order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
     });

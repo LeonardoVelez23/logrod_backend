@@ -8,7 +8,9 @@ import { rolDeCargo } from '../utils/roles.js';
  */
 export const rolVigente = async ({ id, rol }) => {
   if (rol === 'cliente') {
-    return (await Cliente.findByPk(id, { attributes: ['id'] })) ? 'cliente' : null;
+    // Una cuenta eliminada pierde el acceso aunque su token no haya vencido.
+    const cliente = await Cliente.findByPk(id, { attributes: ['id', 'eliminado_en'] });
+    return cliente && !cliente.eliminado_en ? 'cliente' : null;
   }
   const empleado = await Empleado.findByPk(id, { attributes: ['id', 'cargo'] });
   return empleado ? rolDeCargo(empleado.cargo) : null;

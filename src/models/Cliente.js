@@ -75,6 +75,11 @@ Cliente.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  // Fecha en que el cliente eliminó su cuenta (datos ya anonimizados).
+  eliminado_en: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   // Intentos fallidos con el OTP vigente (máximo OTP_MAX_ATTEMPTS).
   reset_password_attempts: {
     type: DataTypes.INTEGER,
