@@ -22,6 +22,9 @@ if (config.nodeEnv === 'production') {
 // Middlewares de seguridad y utilidad
 app.use(helmet());
 app.use(cors(opcionesCors(config)));
+// La foto de perfil llega en base64 (hasta ~1 MB); el resto de la API, con
+// el límite por defecto (100 KB).
+app.use('/api/v1/perfil/foto', express.json({ limit: '1mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Los textos se guardan tal cual: cada cliente (web, app, correo) escapa al

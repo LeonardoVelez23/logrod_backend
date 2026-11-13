@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Op } from 'sequelize';
-import { Cliente, Pedido, DetallePedido, Producto, Pago, sequelize } from '../models/index.js';
+import { Cliente, Pedido, DetallePedido, Producto, Pago, FotoPerfil, sequelize } from '../models/index.js';
 
 const ESTADOS_FINALES = ['entregado', 'cancelado'];
 
@@ -16,6 +16,7 @@ export const getMisDatos = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     }
 
+    const foto = await FotoPerfil.findByPk(cliente.id);
     const pedidos = await Pedido.findAll({
       where: { cliente_id: cliente.id },
       attributes: ['id', 'fecha', 'hora', 'modalidad', 'estado', 'valor_total'],
@@ -45,6 +46,14 @@ export const getMisDatos = async (req, res, next) => {
           registrado_en: cliente.createdAt,
           actualizado_en: cliente.updatedAt
         },
+        // Portabilidad: la foto va completa (base64) si la subió.
+        foto_perfil: foto
+          ? {
+              tipo: foto.tipo,
+              actualizada_en: foto.updatedAt,
+              imagen_base64: Buffer.from(foto.datos).toString('base64')
+            }
+          : null,
         aceptacion_legal: cliente.legal_version
           ? { version: cliente.legal_version, aceptado_en: cliente.legal_aceptado_en }
           : null,
@@ -105,6 +114,7 @@ export const eliminarMiCuenta = async (req, res, next) => {
         };
       }
 
+      await FotoPerfil.destroy({ where: { cliente_id: cliente.id }, transaction });
       const marca = `ELIMINADO-${cliente.id}`;
       await cliente.update(
         {

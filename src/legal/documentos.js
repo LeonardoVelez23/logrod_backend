@@ -100,6 +100,7 @@ const privacidad = {
       titulo: '2. Datos que tratamos',
       parrafos: [
         'Datos de identificación y contacto: número de identificación, nombres, apellidos, correo electrónico, teléfono y tipo de cliente (estudiante, docente, personal administrativo o persona externa).',
+        'Foto de perfil, solo si decides subirla. Es opcional, solo la ves tú en la aplicación y puedes cambiarla o quitarla cuando quieras.',
         'Datos de uso del servicio: pedidos, productos, fechas, montos, estado y método de pago, y número de referencia cuando aplica.',
         'Datos de seguridad: tu contraseña, que se guarda cifrada de forma irreversible, y los códigos temporales de recuperación.',
         'No tratamos datos sensibles ni guardamos datos de tarjetas de pago.'
@@ -132,7 +133,7 @@ const privacidad = {
     {
       titulo: '6. Cuánto tiempo los conservamos',
       parrafos: [
-        'Mientras tu cuenta esté activa. Cuando eliminas tu cuenta borramos tus datos personales (identificación, nombres, correo y teléfono); los pedidos y pagos quedan sin datos que te identifiquen, porque la ley obliga a conservar los registros contables por el plazo que establece.'
+        'Mientras tu cuenta esté activa. Cuando eliminas tu cuenta borramos tus datos personales (identificación, nombres, correo, teléfono y foto de perfil); los pedidos y pagos quedan sin datos que te identifiquen, porque la ley obliga a conservar los registros contables por el plazo que establece.'
       ]
     },
     {
@@ -193,7 +194,7 @@ export const ELIMINAR_CUENTA = {
     {
       titulo: 'Qué se elimina y qué se conserva',
       parrafos: [
-        'Se eliminan tu identificación, nombres, apellidos, correo electrónico, teléfono y contraseña. Ya no podrás iniciar sesión con esa cuenta.',
+        'Se eliminan tu identificación, nombres, apellidos, correo electrónico, teléfono, foto de perfil y contraseña. Ya no podrás iniciar sesión con esa cuenta.',
         'Los pedidos y pagos se conservan sin datos que te identifiquen, por las obligaciones contables y tributarias del restaurante.'
       ]
     }

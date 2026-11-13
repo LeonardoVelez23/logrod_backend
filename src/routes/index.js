@@ -9,6 +9,7 @@ import pagoRoutes from './pagoRoutes.js';
 import authRoutes from './authRoutes.js';
 import legalRoutes from './legalRoutes.js';
 import privacidadRoutes from './privacidadRoutes.js';
+import perfilRoutes from './perfilRoutes.js';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use('/', healthRoutes);
 router.use('/auth', authRoutes);
 router.use('/legal', legalRoutes);
 router.use('/privacidad', privacidadRoutes);
+router.use('/perfil', perfilRoutes);
 router.use('/categorias', categoriaRoutes);
 router.use('/productos', productoRoutes);
 router.use('/clientes', clienteRoutes);

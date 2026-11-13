@@ -6,6 +6,7 @@ import Empleado from './Empleado.js';
 import Pedido from './Pedido.js';
 import DetallePedido from './DetallePedido.js';
 import Pago from './Pago.js';
+import FotoPerfil from './FotoPerfil.js';
 
 // --- Asociaciones ---
 
@@ -51,6 +52,10 @@ Producto.belongsToMany(Pedido, {
 Pedido.hasOne(Pago, { foreignKey: 'pedido_id', as: 'pago' });
 Pago.belongsTo(Pedido, { foreignKey: 'pedido_id', as: 'pedido' });
 
+// Cliente <-> FotoPerfil (Uno a Uno; se borra con el cliente)
+Cliente.hasOne(FotoPerfil, { foreignKey: 'cliente_id', as: 'foto', onDelete: 'CASCADE' });
+FotoPerfil.belongsTo(Cliente, { foreignKey: 'cliente_id', as: 'cliente' });
+
 // Exportar todos los modelos y la conexión
 export {
   sequelize,
@@ -60,5 +65,6 @@ export {
   Empleado,
   Pedido,
   DetallePedido,
-  Pago
+  Pago,
+  FotoPerfil
 };

@@ -164,6 +164,18 @@ DELETE /api/v1/privacidad/mi-cuenta   # (cliente) body {contrasenia}: elimina su
 
 Eliminar la cuenta reemplaza identificación, nombres, correo, teléfono y contraseña, y marca `eliminado_en`; los pedidos y pagos se conservan anónimos. No se permite con pedidos en curso. El token deja de servir en la siguiente petición.
 
+### Perfil del cliente (app móvil)
+
+```http
+GET    /api/v1/perfil          # (cliente) sus datos + foto_actualizada_en
+PUT    /api/v1/perfil          # (cliente) mismas reglas que PUT /clientes/:id (contraseña con OTP)
+GET    /api/v1/perfil/foto     # {tipo, imagen (base64), actualizada_en} o 404
+PUT    /api/v1/perfil/foto     # body {imagen: base64} — JPEG, PNG o WebP, máx. 600 KB
+DELETE /api/v1/perfil/foto
+```
+
+La foto se guarda en la tabla `FotosPerfil` (una por cliente, con RLS), se incluye en `GET /privacidad/mis-datos` y se borra al eliminar la cuenta. El tipo se detecta por los bytes, no por lo que diga el cliente.
+
 ### Páginas públicas (para Google Play y App Store)
 
 ```http
