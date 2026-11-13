@@ -65,6 +65,16 @@ Cliente.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  // Versión de los términos y la política de datos aceptada al registrarse
+  // y cuándo (LOPDP). Null si lo creó el personal desde el panel.
+  legal_version: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  legal_aceptado_en: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   // Intentos fallidos con el OTP vigente (máximo OTP_MAX_ATTEMPTS).
   reset_password_attempts: {
     type: DataTypes.INTEGER,

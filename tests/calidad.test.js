@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VERSION_LEGAL } from '../src/legal/documentos.js';
 
 // En este archivo el envío de correo siempre falla (SMTP caído).
 vi.mock('../src/services/emailService.js', () => ({
@@ -29,6 +30,8 @@ const registro = (datos = {}) => ({
   correo_electronico: 'ana@prueba.test',
   tipo_cliente: 'Estudiante',
   contrasenia: 'Segura#2026',
+  acepta_terminos: true,
+  version_legal: VERSION_LEGAL,
   ...datos
 });
 

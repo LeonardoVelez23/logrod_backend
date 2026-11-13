@@ -2,6 +2,7 @@ import { Cliente } from '../models/index.js';
 import { errorDeContrasenia } from '../utils/password.js';
 import bcrypt from 'bcryptjs';
 import { verificarOtp, otpLimpio } from '../services/otpService.js';
+import { VERSION_LEGAL } from '../legal/documentos.js';
 
 export const getAllClientes = async (req, res, next) => {
     try {
@@ -53,7 +54,10 @@ export const getClienteById = async (req, res, next) => {
 
 export const createCliente = async (req, res, next) => {
     try {
-    const { identificacion, nombres, apellidos, correo_electronico, telefono, tipo_cliente, contrasenia } = req.body;
+    const {
+        identificacion, nombres, apellidos, correo_electronico, telefono, tipo_cliente, contrasenia,
+        acepta_terminos, version_legal
+    } = req.body;
 
     if (!identificacion || !nombres || !apellidos || !correo_electronico || !tipo_cliente || !contrasenia) {
         return res.status(400).json({
@@ -75,6 +79,26 @@ export const createCliente = async (req, res, next) => {
         return res.status(400).json({ success: false, message: errorContrasenia });
     }
 
+    // Quien se registra acepta los términos y la política de datos vigentes
+    // (LOPDP). El personal que crea un cliente desde el panel no acepta por él.
+    const esPersonal = Boolean(req.user) && req.user.rol !== 'cliente';
+    let aceptacionLegal = {};
+    if (!esPersonal) {
+        if (acepta_terminos !== true) {
+            return res.status(400).json({
+            success: false,
+            message: 'Debes aceptar los términos y condiciones y la política de protección de datos'
+            });
+        }
+        if (version_legal !== VERSION_LEGAL) {
+            return res.status(400).json({
+            success: false,
+            message: 'Los términos y condiciones se actualizaron. Revísalos y acéptalos de nuevo.'
+            });
+        }
+        aceptacionLegal = { legal_version: VERSION_LEGAL, legal_aceptado_en: new Date() };
+    }
+
     const salt = await bcrypt.genSalt(10);
     const contraseniaHasheada = await bcrypt.hash(contrasenia, salt);
 
@@ -85,7 +109,8 @@ export const createCliente = async (req, res, next) => {
         correo_electronico: correo_electronico.trim().toLowerCase(),
         telefono: telefono?.trim() || null,
         tipo_cliente,
-        contrasenia: contraseniaHasheada
+        contrasenia: contraseniaHasheada,
+        ...aceptacionLegal
     });
 
     const { contrasenia: _, ...clienteSinPassword } = cliente.toJSON();

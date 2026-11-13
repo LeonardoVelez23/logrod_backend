@@ -36,6 +36,13 @@ export const verifyToken = async (req, res, next) => {
   }
 };
 
+/**
+ * Como verifyToken, pero sin token sigue como visitante (req.user vacío).
+ * Para rutas públicas que se comportan distinto con el personal.
+ */
+export const tokenOpcional = (req, res, next) =>
+  req.headers.authorization ? verifyToken(req, res, next) : next();
+
 export const restrictTo = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.rol)) {

@@ -3,6 +3,7 @@ import request from 'supertest';
 import app from '../../src/app.js';
 import { Cliente } from '../../src/models/index.js';
 import jwt from 'jsonwebtoken';
+import { VERSION_LEGAL } from '../../src/legal/documentos.js';
 
 // verifyToken consulta el rol vigente en la base; aquí los modelos son
 // simulados, así que se confía en el rol del token.
@@ -60,7 +61,9 @@ describe('Cliente Routes (/api/v1/clientes)', () => {
           apellidos: 'López',
           correo_electronico: 'maria@test.com',
           tipo_cliente: 'Estudiante',
-          contrasenia: 'Password123!'
+          contrasenia: 'Password123!',
+          acepta_terminos: true,
+          version_legal: VERSION_LEGAL
         });
 
       expect(res.status).toBe(201);
@@ -81,7 +84,9 @@ describe('Cliente Routes (/api/v1/clientes)', () => {
           apellidos: 'López',
           correo_electronico: 'existente@test.com',
           tipo_cliente: 'Estudiante',
-          contrasenia: 'Password123!'
+          contrasenia: 'Password123!',
+          acepta_terminos: true,
+          version_legal: VERSION_LEGAL
         });
 
       expect(res.status).toBe(400);

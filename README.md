@@ -143,6 +143,18 @@ Respuesta de ejemplo:
 }
 ```
 
+### Términos y política de datos (LOPDP)
+
+```http
+GET /api/v1/legal              # versión vigente y documentos
+GET /api/v1/legal/terminos     # términos y condiciones
+GET /api/v1/legal/privacidad   # política de protección de datos
+```
+
+Públicos, en JSON (`{tipo, titulo, version, secciones: [{titulo, parrafos}]}`); la app los muestra con sus estilos. Los textos están en `src/legal/documentos.js`: al cambiarlos, sube `VERSION_LEGAL`.
+
+El registro (`POST /clientes` sin token de personal) exige `acepta_terminos: true` y `version_legal` igual a la vigente, y guarda `legal_version` y `legal_aceptado_en` en el cliente. Los clientes que crea el personal desde el panel no la llevan.
+
 ## Estructura del proyecto
 
 ```text
